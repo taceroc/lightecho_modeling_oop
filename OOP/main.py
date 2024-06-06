@@ -189,28 +189,27 @@ def blub(dz0, ct, params, source1, save = False):
     x_inter_arcsec, y_inter_arcsec, z_inter_arcsec = [],[],[]
     surface_total = []
     x_inter_total, y_inter_total, z_inter_total = [], [], []
-    multip = ct // dt0
-    start_t = ct - (multip * dt0)
+    # multip = ct // dt0
+    # start_t = ct - (multip * dt0)
     # fig = go.Figure()
-    for obs_time in np.arange(ct - start_t, ct, 1 * fc.dtoy):
-        print(f"Time {obs_time / fc.dtoy} day")
-        ct = obs_time
+    # for obs_time in np.arange(ct - start_t, ct, 1 * fc.dtoy):
+        # print(f"Time {obs_time / fc.dtoy} day")
+        # ct = obs_time
         # try:
-        LE_bulbsource1 = LE_SphericalBulb(ct, bulb, source1)
-        x_inter_values, y_inter_values, z_inter_values = LE_bulbsource1.get_intersection_xyz()
+    LE_bulbsource1 = LE_SphericalBulb(ct, bulb, source1)
+    x_inter_values, y_inter_values, z_inter_values = LE_bulbsource1.get_intersection_xyz()
 
-        x_inter_total.extend(x_inter_values)
-        y_inter_total.extend(y_inter_values)
-        z_inter_total.extend(z_inter_values) 
-        print(len(x_inter_values)) 
+    x_inter_total.extend(x_inter_values)
+    y_inter_total.extend(y_inter_values)
+    z_inter_total.extend(z_inter_values) 
+    print(len(x_inter_values)) 
         # except:
         #     continue
     # fig.show()
-    print(len(x_inter_total))
 
-    x_total = np.array(x_inter_total)
-    y_total = np.array(y_inter_total)
-    z_total = np.array(z_inter_total)
+    x_total = np.array(x_inter_values)
+    y_total = np.array(y_inter_values)
+    z_total = np.array(z_inter_values)
     # x_inter_arcsec = np.array(x_inter_arcsec)
     # y_inter_arcsec = np.array(y_inter_arcsec)
 

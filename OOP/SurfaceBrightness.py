@@ -77,7 +77,7 @@ class SurfaceBrightness:
             rhos = np.sqrt(2 * self.z_inter_values * self.ct + (self.ct)**2 )
             half_obs_thickness = np.sqrt( (self.ct / rhos) ** 2 * self.dz0 ** 2 + ( (rhos * fc.c / (2 * self.ct)) + ( fc.c * self.ct / (2 * rhos) )) ** 2 * self.dt0  ** 2 ) / 2
             rhodrho = rhos * half_obs_thickness
-
+ 
         # dust-observer
         ll = np.sqrt(self.x_inter_values**2 + self.y_inter_values**2 + (self.z_inter_values - self.d)**2)
         # calcualte scatter angle, angle between source-dust , dust-observer
@@ -118,7 +118,89 @@ class SurfaceBrightness:
         else:
             return self.cossigma, self.sb_true_matrix
 
+    def calculate_surface_brightness_2(self, DustShape, z_matrix, xy_matrix, size_x, size_y):
+        """
+            Calculate the surface brightness at a position r = (x_inter, y_inter, z_inter): 
+            Sugermann 2003 equation 7:
+                SB(lambda, t) = F(lambda)nH(r) * (c dz0 / (4 pi r rhodrho) )* S(lambda, mu) 
+                S(lambda, mu) = \int Q(lamdda, a) sigma Phi(mu, lambda, a) f(a) da
+                lambda: given wavelength in micrometer [lenght]
+                dz0: dust thickness [lenght]
+                r: position dust [lenght]
+                rhodrho: x-y of LE [lenght^2]
+                mu: cos theta, theta: scattering angle
+                Q: albedo
+                sigma: cross section [lenght^2]
+                Phi: scattering function
+                f(a): dust distribution [1/lenght]
+                S: scattering integral [lenght^2]
 
+            Arguments:
+                x_inter, y_inter, z_inter: intersection paraboloid + dust in ly
+                dz0: thickness dust in ly
+                ct: time where the LE is observed in y
+
+            Return
+                Surface brightness in units of kg/ly^3 [erg/(s cm4)]
+                cos(scatter angle)
+        """
+        
+        # Sugerman 2003 after eq 15 F(lambda) = 1.25*F(lambda, tmax)*0.5*dt0
+        #F 1.08e-14 # watts / m2
+        F = self.F * (fc.ytos**3) # kg,ly,y
+        Ir = 1.25*F*0.5*self.dt0 * fc.n_H * fc.c
+        
+        # calculate r, source-dust
+        r_le = np.sqrt(self.r_le2)
+
+        if isinstance(DustShape, SphericalBlub):
+            print("integral arcsenh")
+            self.sb_true_matrix = np.zeros((size_y, size_x))
+            # def rhos(z, ct=self.ct):
+            #     return np.sqrt(2 * z * ct + (ct)**2 )
+
+
+        sizeg, waveg, Qcarb, gcarb = csf.load_data()
+        # Calculate the scattering integral and the surface brightness
+        S = np.zeros((size_y, size_x))
+        Qscs, gs, sizes, carbon_distribution = csf.calculate_scattering_function_values(sizeg, waveg, dc.wavel, Qcarb, gcarb)
+
+        if isinstance(DustShape, SphericalBlub):
+            for i in range(size_x):
+                for j in range(size_y):
+                    xs = xy_matrix[j, i, 0]
+                    ys = xy_matrix[j, i, 1]
+                    zs = z_matrix[j, i, :]
+                    ll = np.sqrt(xs**2 + ys**2 + (zs - self.d)**2)
+                    r = np.sqrt(xs**2 + ys**2 + zs**2)
+                    rhos = np.sqrt(2 * zs * self.ct + (self.ct)**2 )
+                    half_obs_thickness = np.sqrt( (self.ct / rhos) ** 2 * self.dz0 ** 2 + ( (rhos * fc.c / (2 * self.ct)) + ( fc.c * self.ct / (2 * rhos) )) ** 2 * self.dt0  ** 2 ) / 2
+                    rhodrho = np.mean(rhos * half_obs_thickness)
+                    cossigma = ((xs**2 + ys**2 + zs * (zs - self.d)) / (r * ll))
+                    # print(r*ll)
+                    cossigmam = np.mean(cossigma)
+                    if ((cossigmam >= -1) and (cossigmam <= 1)):
+                        ds, Scm = csf.main(cossigmam, Qscs, gs, sizes, carbon_distribution) # 1.259E+00 in um
+                        S[j,i] = (Scm[0][0] * fc.pctoly**2) / (100 * fc.pctom )**2 # conver to ly
+                    else:
+                        S[j,i] = 0
+                        # print("no cosi")
+                    arr = z_matrix[j,i][z_matrix[j,i]!=0]
+                    if arr.shape[0] == 0:
+                        self.sb_true_matrix[j,i] = 0
+                    else:
+                        # mins = np.nanmin(arr)
+                        # maxs = np.nanmax(arr)
+                        # # print(mins, maxs)
+                        # Inte_z_min = np.arcsinh(mins/rhos(mins))
+                        # Inte_z_max = np.arcsinh(maxs/rhos(maxs))
+                        # if ((mins == maxs) & (mins != 0)):
+                        #     Inte_z_min = np.arcsinh((mins-0.00001)/rhos(mins-0.00001))
+                        temporal_s =  Ir * S[j,i] * self.dz0 / ( 4 * np.pi * np.mean(r) * rhodrho )
+                        self.sb_true_matrix[j,i] = temporal_s
+
+        
+        return self.cossigma, self.sb_true_matrix
 
     def calculate_surface_brightness_3(self, DustShape, xy_matrix, size_x, size_y):
         """

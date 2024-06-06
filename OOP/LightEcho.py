@@ -141,12 +141,7 @@ class LE_plane(LE):
         theta_p = np.linspace(0, 2*np.pi, 1000)
         self.x_inter_values = np.sqrt(self.r_le2) * np.cos(theta_p) - (self.A/self.F)*self.ct
         self.y_inter_values = np.sqrt(self.r_le2) * np.sin(theta_p) - (self.B/self.F)*self.ct
-        # self.determine_initial_x()
-        # (x + act)^2 + y^2 = rle^2 --> y12 = +-sqrt(rle^2 - (x + act)^2)
-        # calculate the y 
-        # y_1 = np.sqrt(self.r_le2 - (self.x + (self.A/self.F) * self.ct)**2) - (self.B/self.F) * self.ct
-        # super().calculate_intersection_x_y(y_1)
-        # # calculate z = z0 - ax >> plane equation
+        # calculate z = z0 - ax >> plane equation
         self.z_inter_values = -(self.D/self.F) - (self.A/self.F) * self.x_inter_values - (self.B/self.F) * self.y_inter_values
 
         return self.x_inter_values, self.y_inter_values, self.z_inter_values
@@ -281,26 +276,33 @@ class LE_SphericalBulb(LE):
         self.z_inter_p_new = np.array([inter[2] for inter in intersection_points])
         print(self.x_inter_p_new.shape)
 
-        
-        # fig = go.Figure()
-        # fig.add_trace(go.Surface(
-        #     x=x_p,
-        #     y=y_p,
-        #     z=z_p, showlegend = False
-        # ))
-        # fig.add_trace(go.Surface(
-        #     x=x_p,
-        #     y=y_p,
-        #     z=z_e, showlegend = False
-        # ))
-        # fig.add_trace(go.Scatter3d(
-        #     x=self.x_inter_values,
-        #     y=self.y_inter_values,
-        #     z=self.z_inter_values, 
-        #     marker={'size': 3,
-        #             'opacity': 0.8}, showlegend = False
-        # ))
-        # fig.show()
+        theta = np.linspace(0, np.pi, 100)
+        phi = np.linspace(0, 2*np.pi, 100)
+        theta, phi = np.meshgrid(theta, phi)
+        fig = go.Figure()
+        fig.add_trace(go.Surface(
+            x=x_p,
+            y=y_p,
+            z=z_p, 
+            showlegend = False,
+            colorscale ='Blues',
+            opacity = 0.4,
+        ))
+        fig.add_trace(go.Surface(
+            x=self.r0ly * np.sin(theta) * np.cos(phi) + self.h,
+            y=self.r0ly * np.sin(theta) * np.sin(phi) + self.k,
+            z=self.r0ly * np.cos(theta) + self.l,
+            showlegend = False,
+            opacity = 0.4,
+        ))
+        fig.add_trace(go.Scatter3d(
+            x=self.x_inter_p_new ,
+            y=self.y_inter_p_new ,
+            z=self.z_inter_p_new , 
+            marker={'size': 3,
+                    'opacity': 0.8}, showlegend = False
+        ))
+        fig.show()
 
         return (self.x_inter_p_new, self.y_inter_p_new, self.z_inter_p_new)
     
