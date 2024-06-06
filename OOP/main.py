@@ -199,13 +199,6 @@ def blub(dz0, ct, params, source1, save = False):
     LE_bulbsource1 = LE_SphericalBulb(ct, bulb, source1)
     x_inter_values, y_inter_values, z_inter_values = LE_bulbsource1.get_intersection_xyz()
 
-    x_inter_total.extend(x_inter_values)
-    y_inter_total.extend(y_inter_values)
-    z_inter_total.extend(z_inter_values) 
-    print(len(x_inter_values)) 
-        # except:
-        #     continue
-    # fig.show()
 
     x_total = np.array(x_inter_values)
     y_total = np.array(y_inter_values)
@@ -213,13 +206,12 @@ def blub(dz0, ct, params, source1, save = False):
     # x_inter_arcsec = np.array(x_inter_arcsec)
     # y_inter_arcsec = np.array(y_inter_arcsec)
 
-    LE_bulbsource1 = LE_SphericalBulb(ct, bulb, source1)
+    # LE_bulbsource1 = LE_SphericalBulb(ct, bulb, source1)
     size_x = 100
     size_y = 100
     size_z = 100
     print(np.nanmin(x_total), np.nanmax(x_total), size_x)
-    (pixel_xs_true, pixel_ys_true, pixel_zs_true, xy_matrix, z_matrix, 
-     x_bins, u_bins, z_bins) = LE_bulbsource1.XYZ_merge_bulb(x_total, y_total, z_total)
+    xy_matrix, z_matrix = LE_bulbsource1.XYZ_merge_bulb()
 
     print(z_matrix.shape)
     flat = xy_matrix.reshape(size_x*size_y,2)
@@ -305,50 +297,8 @@ def plane_dust(dz0, ct, dt0, dust_position, size_cube, params, source1, save = F
     x_inter, y_inter, z_inter = [], [], []
  
     LE_planedust1source1 = LE_PlaneDust(ct, planedust1, source1)
-    (x_inter_p_new, y_inter_p_new, z_inter_p_new) = LE_planedust1source1.get_intersection_xyz(planedust1)
-    xpa = LE_planedust1source1.x_inter_values
-    ypa = LE_planedust1source1.y_inter_values
-    zpa = LE_planedust1source1.z_inter_values
-
-    print("xinter")
-    print(len(x_inter_p_new))
-
-    figs = go.Figure()
-
-    figs.add_trace(go.Scatter3d(x = [planedust1.x_min, planedust1.x_max, planedust1.x_max, planedust1.x_min, planedust1.x_min, planedust1.x_max, planedust1.x_max, planedust1.x_min],
-                      y = [planedust1.y_min, planedust1.y_min, planedust1.y_max, planedust1.y_max, planedust1.y_max, planedust1.y_max, planedust1.y_min, planedust1.y_min,],
-                      z = [planedust1.z_min, planedust1.z_min, planedust1.z_min, planedust1.z_min, planedust1.z_max, planedust1.z_max, planedust1.z_max, planedust1.z_max], showlegend = False))
-    
-    xp = np.linspace(np.min(xpa) - 10, np.max(xpa) + 10,100)
-    yp = np.linspace(np.min(ypa) - 10, np.max(ypa) + 10,100)
-    xp, yp = np.meshgrid(xp, yp)
-    zp = (-params[0] * xp - params[1] * yp - params[-1]) / params[2]
-    figs.add_trace(go.Surface(
-        x=xp,
-        y=yp,
-        z=zp,
-        opacity=0.2))
-    figs.add_trace(go.Scatter3d(
-        x=xpa,
-        y=ypa,
-        z=zpa,
-        opacity=0.2))
-    
-    figs.add_trace(go.Scatter3d(
-        x=x_inter_p_new,
-        y=y_inter_p_new,
-        z=z_inter_p_new,
-        opacity=0.2))
-    figs.show()
-    # print(x_inter)
-    x_total = np.array(x_inter_p_new)
-    y_total = np.array(y_inter_p_new)
-    z_total = np.array(z_inter_p_new)
-    
-
-    LE_planedust1source1 = LE_PlaneDust(ct, planedust1, source1)
-    (pixel_xs_true, pixel_ys_true, xy_matrix, 
-        x_bins, y_bins) = LE_planedust1source1.XYZ_merge_plane_2ddust(planedust1, dust_cube_img, x_total, y_total)
+    x_inter_values, y_inter_values, z_inter_values = LE_planedust1source1.get_intersection_xyz(planedust1)
+    xy_matrix = LE_planedust1source1.XYZ_merge_plane_2ddust(planedust1, dust_cube_img)
 
     arris = []
     for i in range(planedust1.side_x):
