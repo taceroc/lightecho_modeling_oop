@@ -2,13 +2,13 @@ import numpy as np
 import os
 import matplotlib.pyplot as plt
 # os.path.dirname(os.path.abspath(__file__)) 
-from definitions import PATH_TO_DUST_CUBE
+from definitions import PATH_TO_DUST_IMG
 
 
 
 
 def generate_cube_dust():
-    dust_cube_test_spitzer = np.load(PATH_TO_DUST_CUBE)
+    dust_cube_test_spitzer = np.load(PATH_TO_DUST_IMG)
     sizes = dust_cube_test_spitzer.shape
     # if len(sizes) == 1:
     #     sizes = np.array(int())
@@ -23,7 +23,7 @@ def generate_cube_dust():
 
 
 def generate_cube_dust_random():
-    dust_cube_test_spitzer = np.load(PATH_TO_DUST_CUBE)
+    dust_cube_test_spitzer = np.load(PATH_TO_DUST_IMG)
     sizes = dust_cube_test_spitzer.shape
     print(sizes)
     dust_cube_test_spitzer = dust_cube_test_spitzer.reshape(sizes[0],sizes[1])
@@ -37,7 +37,7 @@ def generate_cube_dust_random():
     return img
 
 def generate_cube_dust_nonbool():
-    dust_cube_test_spitzer = np.load(PATH_TO_DUST_CUBE)
+    dust_cube_test_spitzer = np.load(PATH_TO_DUST_IMG)
     sizes = dust_cube_test_spitzer.shape
     dust_cube_test_spitzer = dust_cube_test_spitzer.reshape(sizes[0],sizes[1])
     third = np.zeros((sizes[0]*sizes[1],sizes[0]))

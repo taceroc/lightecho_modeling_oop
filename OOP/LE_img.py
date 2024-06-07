@@ -7,13 +7,13 @@ import matplotlib.pyplot as plt
 from shapely.geometry import Polygon, Point
 from descartes import PolygonPatch
 
-from definitions import CONFIG_PATH_constants, CONFIG_PATH_UTILS, ROOT_DIR, PATH_TO_RESULTS, PATH_TO_RESULTS_SIMULATIONS, PATH_TO_RESULTS_FIGURES, CUBE_NAME
+from definitions import CONFIG_PATH_UTILS
 sys.path.append(CONFIG_PATH_UTILS)
 import utils as utils
 
 from DustShape import SphericalBlub, PlaneDust
 
-class LE_image:
+class LEImage:
     def __init__(self, new_xs, new_ys, surface, pixel_resolution = 0.2, cmap = 'magma_r'):
         self.pixel = pixel_resolution # arcsec
         self.cmap = cmap
@@ -63,7 +63,7 @@ class LE_image:
                         self.surface_img[j,i] = np.array([0,0,0]) * 255
         return self.surface_img
 
-class LE_image_analytical(LE_image):
+class LEImageAnalytical(LEImage):
 
     def __init__(self, new_xs, new_ys, surface, r_le_in, r_le_out, pixel_resolution = 0.2, cmap = 'magma_r'):
         super().__init__(new_xs, new_ys, surface, pixel_resolution, cmap)
@@ -107,9 +107,9 @@ class LE_image_analytical(LE_image):
         return self.surface_val, self.surface_img, x_img, y_img
     
 
-class LE_image_nonanalytical(LE_image):
+class LEImageNonAnalytical(LEImage):
     
-    def __init__(self, new_xs, new_ys, surface, pixel_resolution = 0.2, cmap = 'magma_r'):
+    def __init__(self, new_xs, new_ys, surface, pixel_resolution=0.2, cmap='magma_r'):
         super().__init__(new_xs, new_ys, surface, pixel_resolution, cmap)
         self.surface_img = 0
 
@@ -124,8 +124,9 @@ class LE_image_nonanalytical(LE_image):
         if alpha_shape.geom_type == 'MultiPolygon':
             geoms = [g for g in alpha_shape.geoms]
         fig, ax = plt.subplots()
-        ax.scatter(*zip(*mpoints[::100]), alpha = 0.2)
+        ax.scatter(*zip(*mpoints[::100]), alpha=0.2)
         if alpha_shape.geom_type == 'MultiPolygon':
+            print("it is multipolygon")
             for i in geoms:
                 ax.add_patch(PolygonPatch(i, alpha=0.3))
         else:
