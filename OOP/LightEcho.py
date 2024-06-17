@@ -58,8 +58,8 @@ class LE:
         rhos = np.sqrt(2 * self.z_inter_values * self.ct + (self.ct)**2 )
         half_obs_thickness = np.sqrt( (self.ct / rhos) ** 2 * self.dz0 ** 2 + ( (rhos * fc.c / (2 * self.ct)) + ( fc.c * self.ct / (2 * rhos) )) ** 2 * self.dt0  ** 2 ) / 2
         # -- include the thickness in xy plane
-        self.r_le_out = r_le + half_obs_thickness
-        self.r_le_in = r_le - half_obs_thickness
+        self.r_le_out = r_le
+        self.r_le_in = r_le - 2*half_obs_thickness
         
     def final_xy_projected(self):
         """
@@ -403,9 +403,12 @@ class LESheetDust(LE):
         """
         self.calculate_rle2()
         theta_p = np.linspace(0, 2*np.pi, 1000)
+        self.calculate_rho_thickness()
 
         self.x_inter_values = np.sqrt(self.r_le2) * np.cos(theta_p) - (self.A/self.F)*self.ct
         self.y_inter_values = np.sqrt(self.r_le2) * np.sin(theta_p) - (self.B/self.F)*self.ct
+        
+        
         # calculate the z intersections for each "infinitesimal" plane
         self.z_inter_values = -(self.D/self.F) - (self.A * self.x_inter_values / self.F) - (self.B * self.y_inter_values / self.F)
         # super().calculate_rho_thickness()

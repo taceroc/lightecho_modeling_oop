@@ -1,5 +1,6 @@
 import numpy as np
 import sys
+import scipy.integrate as integrate
 from definitions import CONFIG_PATH_DUST
 
 sys.path.append(CONFIG_PATH_DUST)
@@ -33,21 +34,57 @@ class SurfaceBrightness:
         self.ct = LE.ct
         self.dz0 = LE.dz0
         self.r_le2 = LE.calculate_rle2()
+        self.rhos = 0
         self.surface = 0
         self.cossigma = 0
+        self.lc = {}
 
     def rhos_half(self, z):
-        rhos = np.sqrt(2 * z * self.ct + (self.ct) ** 2)
+        """
+            Calculate the thickness of the visible light echo, the rho coordiante, Sugermann 2003. Eq 11
+            Convolution of the thickness due to dust thickness and duration of pulse from source
+            Arguments:
+                Values of z: intersection paraboloid+dust
+            
+            Return:
+                rhodrho: Sugermann 2003 Eq 7, rho = sqrt(x**2 + y**2)
+                rhos = sqrt(x**2 + y**2)
+                half_obs_thickness = thickness of LE
+
+        """
+        self.rhos = np.sqrt(2 * z * self.ct + (self.ct) ** 2)
         half_obs_thickness = (
             np.sqrt(
-                (self.ct / rhos) ** 2 * self.dz0**2
-                + ((rhos * fc.c / (2 * self.ct)) + (fc.c * self.ct / (2 * rhos))) ** 2
+                (self.ct / self.rhos) ** 2 * self.dz0**2
+                + ((self.rhos * fc.c / (2 * self.ct)) + (fc.c * self.ct / (2 * self.rhos))) ** 2
                 * self.dt0**2
             )
             / 2
         )
-        rhodrho = rhos * half_obs_thickness
-        return rhodrho, rhos, half_obs_thickness
+        rhodrho = self.rhos * half_obs_thickness
+        return rhodrho, self.rhos, half_obs_thickness
+    
+    def light_curve_integral(self, z):
+        """
+            Calculate integral below Sugermann 2003 equation 5.
+            Integral of the light curve F(lambda) = \int F(lamnda, t_tilde) dt_tilde
+            t_title: time at the dust position (state of light curve when light interact with dust at a tiem t_tilde)
+            t_tilde: between eq 4 and 5 from Sugermann 2003 (also in Xu & Crotts, 1994ApJ 435)
+
+            Arguments:
+                Values of z: intersection paraboloid+dust
+                light curve: {'time': values in days, 'mag': values in mag}
+            
+            Return:
+                Flux at wavelenght lambda
+        """
+
+        t_tilde = self.ct - (np.sqrt(self.rhos**2 + z**2) / self.ct) + (z / self.ct)
+        time_up = self.lc[self.lc['time']<=t_tilde]['time']
+        mag_upto = self.lc[self.lc['time']<=t_tilde]['mag']
+        flux_upto = -2.5*np.log10(mag_upto) + 31.4 
+        
+        self.F = integrate.simpson(mag_upto, time_up)
 
 
 class SurfaceBrightnessAnalytical(SurfaceBrightness):
