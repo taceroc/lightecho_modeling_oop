@@ -28,7 +28,7 @@ class SurfaceBrightness:
             f(a): dust distribution [1/lenght]
             S: scattering integral [lenght^2]
         """
-        self.F = source.Flmax
+        self.Fl = source.Flmax
         self.dt0 = source.dt0
         self.d = source.d
         self.ct = LE.ct
@@ -64,27 +64,31 @@ class SurfaceBrightness:
         rhodrho = self.rhos * half_obs_thickness
         return rhodrho, self.rhos, half_obs_thickness
     
-    def light_curve_integral(self, z):
+    def light_curve_integral(self, x,y,z):
         """
             Calculate integral below Sugermann 2003 equation 5.
             Integral of the light curve F(lambda) = \int F(lamnda, t_tilde) dt_tilde
-            t_title: time at the dust position (state of light curve when light interact with dust at a tiem t_tilde)
+            t_tilde: time at the dust position (state of light curve when light interact with dust at a tiem t_tilde)
             t_tilde: between eq 4 and 5 from Sugermann 2003 (also in Xu & Crotts, 1994ApJ 435)
 
             Arguments:
                 Values of z: intersection paraboloid+dust
-                light curve: {'time': values in days, 'mag': values in mag}
+                light curve: {'time': values in days centered at peak, 'mag': values in mag}
             
             Return:
                 Flux at wavelenght lambda
         """
-
-        t_tilde = self.ct - (np.sqrt(self.rhos**2 + z**2) / self.ct) + (z / self.ct)
-        time_up = self.lc[self.lc['time']<=t_tilde]['time']
-        mag_upto = self.lc[self.lc['time']<=t_tilde]['mag']
-        flux_upto = -2.5*np.log10(mag_upto) + 31.4 
-        
-        self.F = integrate.simpson(mag_upto, time_up)
+        self.Fl = []
+        self.rhos_half(z)
+        t_tilde = self.ct - (np.sqrt(self.rhos**2 + z**2) / fc.c) + (z / fc.c)
+        # t_tilde =  (self.ct - np.linalg.norm([x, y, z], axis=0) + z)/fc.c
+        self.lc['time'] = self.lc['time'] * fc.dtoy
+        for t_tildi in t_tilde:
+            time_up = self.lc['time'][self.lc['time']<=t_tildi]
+            mag_upto = self.lc['mag'][self.lc['time']<=t_tildi]
+            flux_upto = 10**((-48.6-mag_upto) / 2.5)
+            self.Fl.append(integrate.simpson(flux_upto, time_up))
+        return t_tilde
 
 
 class SurfaceBrightnessAnalytical(SurfaceBrightness):
@@ -109,8 +113,8 @@ class SurfaceBrightnessAnalytical(SurfaceBrightness):
 
         # Sugerman 2003 after eq 15 F(lambda) = 1.25*F(lambda, tmax)*0.5*dt0
         # F 1.08e-14 # watts / m2
-        F = self.F * (fc.ytos**3)  # kg,ly,y
-        Ir = 1.25 * F * 0.5 * self.dt0 * fc.n_H * fc.c
+        Fl = self.Fl * (fc.ytos**3)  # kg,ly,y
+        Ir = 1.25 * Fl * 0.5 * self.dt0 * fc.n_H * fc.c
 
         # calculate r, source-dust
         r = np.sqrt(
@@ -182,8 +186,8 @@ class SurfaceBrightnessBulb(SurfaceBrightness):
 
         # Sugerman 2003 after eq 15 F(lambda) = 1.25*F(lambda, tmax)*0.5*dt0
         # F 1.08e-14 # watts / m2
-        F = self.F * (fc.ytos**3)  # kg,ly,y
-        Ir = 1.25 * F * 0.5 * self.dt0 * fc.n_H * fc.c
+        Fl = self.Fl * (fc.ytos**3)  # kg,ly,y
+        Ir = 1.25 * Fl * 0.5 * self.dt0 * fc.n_H * fc.c
 
         # calculate r, source-dust
         r_le = np.sqrt(self.r_le2)
@@ -255,8 +259,8 @@ class SurfaceBrightnessDustSheetPlane(SurfaceBrightness):
 
         # Sugerman 2003 after eq 15 F(lambda) = 1.25*F(lambda, tmax)*0.5*dt0
         # F 1.08e-14 # watts / m2
-        F = self.F * (fc.ytos**3)  # kg,ly,y
-        Ir = 1.25 * F * 0.5 * self.dt0 * fc.n_H * fc.c
+        Fl = self.Fl * (fc.ytos**3)  # kg,ly,y
+        Ir = 1.25 * Fl * 0.5 * self.dt0 * fc.n_H * fc.c
 
         # calculate r, source-dust
         r_le = np.sqrt(self.r_le2)
