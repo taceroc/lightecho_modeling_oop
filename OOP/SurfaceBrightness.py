@@ -11,7 +11,7 @@ import calculate_scattering_function as csf
 
 
 class SurfaceBrightness:
-    def __init__(self, source, LE):
+    def __init__(self, source, LE, lc=None):
         """
         Calculate the surface brightness at a position r = (x_inter, y_inter, z_inter):
         Sugermann 2003 equation 7:
@@ -37,9 +37,10 @@ class SurfaceBrightness:
         self.rhos = 0
         self.surface = 0
         self.cossigma = 0
-        self.lc = {}
+        self.lc = lc
+        self.sb_true_matrix = 0
 
-    def rhos_half(self, z):
+    def rhos_half(self):
         """
             Calculate the thickness of the visible light echo, the rho coordiante, Sugermann 2003. Eq 11
             Convolution of the thickness due to dust thickness and duration of pulse from source
@@ -52,8 +53,8 @@ class SurfaceBrightness:
                 half_obs_thickness = thickness of LE
 
         """
-        self.rhos = np.sqrt(2 * z * self.ct + (self.ct) ** 2)
-        half_obs_thickness = (
+        self.rhos = np.sqrt(self.x_inter_values**2 + self.y_inter_values**2)#np.sqrt(2 * self.z_inter_values * self.ct + (self.ct) ** 2)
+        self.half_obs_thickness = (
             np.sqrt(
                 (self.ct / self.rhos) ** 2 * self.dz0**2
                 + ((self.rhos * fc.c / (2 * self.ct)) + (fc.c * self.ct / (2 * self.rhos))) ** 2
@@ -61,10 +62,10 @@ class SurfaceBrightness:
             )
             / 2
         )
-        rhodrho = self.rhos * half_obs_thickness
-        return rhodrho, self.rhos, half_obs_thickness
+        self.rhodrho = self.rhos * self.half_obs_thickness
+        # return self.rhodrho, self.rhos, half_obs_thickness
     
-    def light_curve_integral(self, x,y,z):
+    def light_curve_integral(self):
         """
             Calculate integral below Sugermann 2003 equation 5.
             Integral of the light curve F(lambda) = \int F(lamnda, t_tilde) dt_tilde
@@ -79,16 +80,20 @@ class SurfaceBrightness:
                 Flux at wavelenght lambda
         """
         self.Fl = []
-        self.rhos_half(z)
-        t_tilde = self.ct - (np.sqrt(self.rhos**2 + z**2) / fc.c) + (z / fc.c)
-        # t_tilde =  (self.ct - np.linalg.norm([x, y, z], axis=0) + z)/fc.c
+        self.rhos_half()
         self.lc['time'] = self.lc['time'] * fc.dtoy
+        # t_tilde =  self.ct - (np.sqrt(self.rhos**2 + self.z_inter_values**2) / fc.c) - (np.abs(self.z_inter_values) / fc.c)
+        t_tilde = self.ct - np.linalg.norm([self.x_inter_values, self.y_inter_values, self.z_inter_values], axis=0) + (np.abs(self.z_inter_values) / fc.c)
+        print(t_tilde)
         for t_tildi in t_tilde:
+            # print(self.lc['time']<=t_tildi)
             time_up = self.lc['time'][self.lc['time']<=t_tildi]
             mag_upto = self.lc['mag'][self.lc['time']<=t_tildi]
-            flux_upto = 10**((-48.6-mag_upto) / 2.5)
+            flux_upto = 10**((-48.6 - mag_upto) / 2.5)
+            if np.sum([self.lc['time']<=t_tildi]) == 0:
+                print(t_tildi, 'no time')
             self.Fl.append(integrate.simpson(flux_upto, time_up))
-        return t_tilde
+        # return t_tilde
 
 
 class SurfaceBrightnessAnalytical(SurfaceBrightness):
@@ -97,7 +102,7 @@ class SurfaceBrightnessAnalytical(SurfaceBrightness):
         self.x_inter_values = xyz_intersection[0]
         self.y_inter_values = xyz_intersection[1]
         self.z_inter_values = xyz_intersection[2]
-        self.sb_true_matrix = 0
+        
 
     def calculate_surface_brightness(self):
         """
@@ -111,19 +116,25 @@ class SurfaceBrightnessAnalytical(SurfaceBrightness):
             cos(scatter angle)
         """
 
-        # Sugerman 2003 after eq 15 F(lambda) = 1.25*F(lambda, tmax)*0.5*dt0
-        # F 1.08e-14 # watts / m2
-        Fl = self.Fl * (fc.ytos**3)  # kg,ly,y
-        Ir = 1.25 * Fl * 0.5 * self.dt0 * fc.n_H * fc.c
-
         # calculate r, source-dust
         r = np.sqrt(
             self.x_inter_values**2 + self.y_inter_values**2 + self.z_inter_values**2
         )
-        r_le = np.sqrt(self.r_le2)
+
+        # Sugerman 2003 after eq 15 F(lambda) = 1.25*F(lambda, tmax)*0.5*dt0
+        # F 1.08e-14 # watts / m2
+        Ir = np.ones(len(r))
+        if self.lc == None:
+            self.rhos_half()
+            Fl = self.Fl * (fc.ytos**3)  # kg,ly,y
+            Ir = Ir * 1.25 * Fl * 0.5 * self.dt0 * fc.n_H * fc.c
+        else:
+            super().light_curve_integral()
+            Fl = np.array(self.Fl) * (fc.ytos**3)  # kg,ly,y
+            Ir = Fl * fc.n_H * fc.c
 
         self.sb_true_matrix = np.zeros(len(r))
-        rhodrho, rhos, half_obs_thickness = super().rhos_half(self.z_inter_values)
+        # rhodrho, rhos, half_obs_thickness = super().rhos_half()
         # dust-observer
         ll = np.sqrt(
             self.x_inter_values**2
@@ -156,7 +167,7 @@ class SurfaceBrightnessAnalytical(SurfaceBrightness):
                 # print("no cosi")
             Inte_z = self.dz0
             self.sb_true_matrix[ik] = (
-                Ir * S[ik] * Inte_z / (4 * np.pi * r[ik] * rhodrho[ik])
+                Ir[ik] * S[ik] * Inte_z / (4 * np.pi * r[ik] * self.rhodrho[ik])
             )
 
         return self.cossigma, self.sb_true_matrix
@@ -170,7 +181,6 @@ class SurfaceBrightnessBulb(SurfaceBrightness):
         self.size_x = LE.size_x
         self.size_y = LE.size_y
         self.size_z = LE.size_z
-        self.sb_true_matrix = 0
 
     def calculate_surface_brightness(self):
         """
@@ -240,7 +250,6 @@ class SurfaceBrightnessDustSheetPlane(SurfaceBrightness):
     def __init__(self, source, LE, sheetdust, xy_matrix):
         super().__init__(source, LE)
         self.xy_matrix = xy_matrix
-        self.sb_true_matrix = 0
         self.size_x = sheetdust.side_x
         self.size_y = sheetdust.side_y
 

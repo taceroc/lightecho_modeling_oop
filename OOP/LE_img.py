@@ -73,7 +73,7 @@ class LEImageAnalytical(LEImage):
 
 
     def interpolation_radiis(self):
-        f_IN = interpolate.NearestNDInterpolator(list(zip(self.new_xs[0,0,:], self.new_ys[0,0,:])), self.r_le_in)
+        f_IN = interpolate.NearestNDInterpolator(list(zip(self.new_xs[0,1,:], self.new_ys[0,1,:])), self.r_le_in)
         f_OUT = interpolate.NearestNDInterpolator(list(zip(self.new_xs[0,0,:], self.new_ys[0,0,:])), self.r_le_out)
 
         return f_IN, f_OUT

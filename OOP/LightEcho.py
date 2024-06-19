@@ -58,7 +58,7 @@ class LE:
         rhos = np.sqrt(2 * self.z_inter_values * self.ct + (self.ct)**2 )
         half_obs_thickness = np.sqrt( (self.ct / rhos) ** 2 * self.dz0 ** 2 + ( (rhos * fc.c / (2 * self.ct)) + ( fc.c * self.ct / (2 * rhos) )) ** 2 * self.dt0  ** 2 ) / 2
         # -- include the thickness in xy plane
-        self.r_le_out = r_le
+        self.r_le_out = np.ones(len(half_obs_thickness)) * r_le 
         self.r_le_in = r_le - 2*half_obs_thickness
         
     def final_xy_projected(self):

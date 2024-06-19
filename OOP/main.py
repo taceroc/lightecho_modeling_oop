@@ -8,7 +8,7 @@ import matplotlib
 import matplotlib.pyplot as plt
 from scipy import integrate
 import pickle
-
+import scipy.stats as stats
 from definitions import CONFIG_PATH_DUST, PATH_TO_DUST_IMG_CODE, CONFIG_PATH_UTILS, PATH_TO_RESULTS_SIMULATIONS, PATH_TO_RESULTS_FIGURES, CUBE_NAME
 sys.path.append(PATH_TO_DUST_IMG_CODE)
 import generate_cube_dust as gcd
@@ -40,8 +40,22 @@ def plane(dz0, ct, dt0, params, source1, save = False):
     plane1 = InfPlane(params, dz0)
     LE_plane1source1 = LE.LEPlane(ct, plane1, source1)
     x_inter_values, y_inter_values, z_inter_values, new_xs, new_ys = LE_plane1source1.run()
-    # print(LE_plane1source1.r_le_out)
-    cossigma, surface = sb.SurfaceBrightnessAnalytical(source1, LE_plane1source1, [x_inter_values, y_inter_values, z_inter_values]).calculate_surface_brightness()
+    # print(LE_plane1source1.r_le_out, LE_plane1source1.r_le_in)
+    sb_plane = sb.SurfaceBrightnessAnalytical(source1, LE_plane1source1, [x_inter_values, y_inter_values, z_inter_values])
+    ######
+    mu = 6
+    variance = 60
+    sigma = np.sqrt(variance)
+    x = np.linspace(0, 50, 1000)
+    mag = -100*stats.norm.pdf(x, sigma, mu)+20
+    lc = {}
+    lc['mag'] = mag
+    lc['time'] = x
+    lc['time'] = lc['time'] - lc['time'][np.argmin(lc['mag'])]
+    sb_plane.lc = lc
+    #####
+    
+    cossigma, surface = sb_plane.calculate_surface_brightness()
     new_xs = utils.convert_ly_to_arcsec(source1.d, new_xs)
     new_ys = utils.convert_ly_to_arcsec(source1.d, new_ys)
     
@@ -353,29 +367,29 @@ def plane_dust(dz0, ct, dt0, dust_position, size_cube, params, source1, save = F
 # source1 = Source(dt0, vc.d, dc.Flmax)
 # sphere(dz0, ct, dt0, r0ly, source1, save=True)
 
-# dz0 = 0.02 * fc.pctoly #vc.dz0 #ly
-# ct =  180 * fc.dtoy #180
-# dt0 = 50 * fc.dtoy #180
-# # this is the same solution as v838
-# z0ly = 0.1 * fc.pctoly
-# alpha = 15
-# a = np.tan(np.deg2rad(alpha))
-# source1 = Source(dt0, vc.d, dc.Flmax)
-# plane(dz0, ct, dt0, [a, 0, 1, -z0ly], source1, save=False)
-
-dz0 = 0.02 * fc.pctoly#ly
-ct =  365*30 * fc.dtoy #180
-dt0 = 365*20 * fc.dtoy #180
-z0ly = 10 * fc.pctoly
+dz0 = 0.02 * fc.pctoly #vc.dz0 #ly
+ct =  180 * fc.dtoy #180
+dt0 = 50 * fc.dtoy #180
+# this is the same solution as v838
+z0ly = 1 * fc.pctoly
 alpha = 15
 a = np.tan(np.deg2rad(alpha))
-size_cube = np.array([1,1]) * fc.pctoly #ly
-params = [a, 0.0, 1.0, -z0ly]
-x0 = 15 * fc.pctoly
-y0 = 1.0 * fc.pctoly
-z0 = (-params[-1] - params[0]*x0 - params[1]*y0) / params[2]
-dust_position = np.array([x0, y0, z0])
-print(x0, y0, z0)
+source1 = Source(dt0, vc.d, dc.Flmax)
+plane(dz0, ct, dt0, [a, 0, 1, -z0ly], source1, save=False)
+
+# dz0 = 0.02 * fc.pctoly#ly
+# ct =  365*30 * fc.dtoy #180
+# dt0 = 365*20 * fc.dtoy #180
+# z0ly = 10 * fc.pctoly
+# alpha = 15
+# a = np.tan(np.deg2rad(alpha))
+# size_cube = np.array([1,1]) * fc.pctoly #ly
+# params = [a, 0.0, 1.0, -z0ly]
+# x0 = 15 * fc.pctoly
+# y0 = 1.0 * fc.pctoly
+# z0 = (-params[-1] - params[0]*x0 - params[1]*y0) / params[2]
+# dust_position = np.array([x0, y0, z0])
+# print(x0, y0, z0)
 
 # xp = np.linspace(-10,10,100)
 # xp, yp = np.meshgrid(xp, xp)
@@ -396,8 +410,8 @@ print(x0, y0, z0)
 #     opacity=1)
 #             )
 # figs.show()
-source1 = Source(dt0, vc.d, dc.Flmax)
-plane_dust(dz0, ct, dt0, dust_position, size_cube, params, source1, save=False)
+# source1 = Source(dt0, vc.d, dc.Flmax)
+# plane_dust(dz0, ct, dt0, dust_position, size_cube, params, source1, save=False)
 
 
 
