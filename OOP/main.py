@@ -40,57 +40,56 @@ def plane(dz0, ct, dt0, params, source1, save = False):
     plane1 = InfPlane(params, dz0)
     LE_plane1source1 = LE.LEPlane(ct, plane1, source1)
     x_inter_values, y_inter_values, z_inter_values, new_xs, new_ys = LE_plane1source1.run()
-    # print(LE_plane1source1.r_le_out, LE_plane1source1.r_le_in)
     sb_plane = sb.SurfaceBrightnessAnalytical(source1, LE_plane1source1, [x_inter_values, y_inter_values, z_inter_values])
     ######
     mu = 6
-    variance = 60
+    variance = 800
     sigma = np.sqrt(variance)
-    x = np.linspace(0, 50, 1000)
-    mag = -100*stats.norm.pdf(x, sigma, mu)+20
+    x = np.linspace(0, 360, 1000)
+    mag = -500*stats.norm.pdf(x, sigma, mu)+20
     lc = {}
     lc['mag'] = mag
-    lc['time'] = x
-    lc['time'] = lc['time'] - lc['time'][np.argmin(lc['mag'])]
+    lc['time'] = x * fc.dtoy
     sb_plane.lc = lc
     #####
     
     cossigma, surface = sb_plane.calculate_surface_brightness()
-    new_xs = utils.convert_ly_to_arcsec(source1.d, new_xs)
-    new_ys = utils.convert_ly_to_arcsec(source1.d, new_ys)
-    
-    print("new_xs", new_xs.shape)
-    r_in = utils.convert_ly_to_arcsec(source1.d, LE_plane1source1.r_le_in)
-    r_out = utils.convert_ly_to_arcsec(source1.d, LE_plane1source1.r_le_out)
-    print(plane1.eq_params[0],  plane1.eq_params[2])
-    act = LE_plane1source1.ct * (plane1.eq_params[0] / plane1.eq_params[2])
-    act = utils.convert_ly_to_arcsec(source1.d, act)
-    bct = LE_plane1source1.ct * (plane1.eq_params[1] / plane1.eq_params[2])
-    bct = utils.convert_ly_to_arcsec(source1.d, bct)
 
     # fig, ax = plt.subplots(1,1, figsize = (8,8))
     n_speci = f"InfPlane_dt0_{int(dt0 / fc.dtoy)}_ct{int(ct / fc.dtoy)}_loc{params}_dz0{dz0}"
-    # n_speci = f"InfPlane_{random_uuid}"
-    # utils.plot(new_xs, new_ys, surface, act, bct, ax, fig, save = False, name = n_speci)
+    
 
-    surface_val, surface_img, x_img, y_img = LEImageAnalytical(new_xs, new_ys, surface, r_in, r_out, pixel_resolution = 0.2, cmap = 'magma_r').create_le_surface(plane1, [act, bct])
-    info_le = [{'r_in (arcsec)': r_in,
-                'r_out (arcsec)': r_out,
-                'act (arcsec)': act,
-                'bct (arcsec)': bct,
+    le_img = LEImageAnalytical(LE_plane1source1, plane1, surface, pixel_resolution = 0.2, cmap = 'magma_r')
+    surface_val, surface_img, x_img, y_img = le_img.create_le_surface()
+    
+
+    info_le = [{'r_in (arcsec)': le_img.r_le_in,
+                'r_out (arcsec)': le_img.r_le_out,
+                'act (arcsec)': le_img.act,
+                'bct (arcsec)': le_img.bct,
                 'params': params,
                 'dz0 (ly)': dz0,
                 'dt0 (days)': int(round(dt0 / fc.dtoy)),
                 'ct (days)': int(round(ct / fc.dtoy))}]
     
 
+
+    figs = LE_plane1source1.plot(le_img.new_xs, le_img.new_ys, surface, n_speci)
+    fig, ax = plt.subplots(1,1, figsize = (8,8))
+    ax.imshow(surface_img, origin = "lower")
+    ax.set_title(n_speci)
+    plt.show()
     if save == True:
+        pathg = PATH_TO_RESULTS_FIGURES
+        plt.savefig(pathg+"\\img_"+n_speci+".pdf", dpi = 300 )
+        figs.write_image(pathg+"\\scatter_"+n_speci+".pdf")
+
         pathg = PATH_TO_RESULTS_SIMULATIONS 
         with open(pathg+'\\meta_info'+n_speci+'.pkl', 'wb') as f:
             pickle.dump(info_le, f)
         #-- save xy projection, the view as observer and surface brightness
-        np.save(pathg+"\\x_inter_arcsec"+n_speci+".npy", new_xs)
-        np.save(pathg+"\\y_inter_arcsec"+n_speci+".npy", new_ys)
+        np.save(pathg+"\\x_inter_arcsec"+n_speci+".npy", le_img.new_xs)
+        np.save(pathg+"\\y_inter_arcsec"+n_speci+".npy", le_img.new_ys)
         np.save(pathg+"\\surface_"+n_speci+".npy", surface)
         np.save(pathg+"\\surface_img"+n_speci+".npy", surface_img)
 
@@ -98,34 +97,6 @@ def plane(dz0, ct, dt0, params, source1, save = False):
         np.save(pathg+"\\x_inter_ly"+n_speci+".npy", x_inter_values)
         np.save(pathg+"\\y_inter_ly"+n_speci+".npy", y_inter_values)
         np.save(pathg+"\\z_inter_ly"+n_speci+".npy", z_inter_values)
-
-    surface_300_norm = ( surface - np.nanmin(surface)  ) / (np.nanmax(surface) - np.nanmin(surface))
-    cmap = matplotlib.colormaps.get_cmap('magma_r')
-    normalize = matplotlib.colors.Normalize(vmin=np.nanmin(surface_300_norm), vmax=np.nanmax(surface_300_norm))
-
-    figs = go.Figure()
-    figs.add_trace(go.Scatter(
-        x=new_xs[0,0,:],
-        y=new_ys[0,0,:],
-        marker=dict(color=[f'rgb({int(cc1[0])}, {int(cc1[1])}, {int(cc1[2])})' for cc1 in cmap(normalize(surface_300_norm)) * 255], size=10),
-        mode="markers")
-              )
-    figs.add_trace(go.Scatter(
-        x=new_xs[0,1,:],
-        y=new_ys[0,1,:],
-        marker=dict(color=[f'rgb({int(cc1[0])}, {int(cc1[1])}, {int(cc1[2])})' for cc1 in cmap(normalize(surface_300_norm)) * 255], size=10),
-        mode="markers")
-              )
-    # figs.show()
-
-
-    fig, ax = plt.subplots(1,1, figsize = (8,8))
-    ax.imshow(surface_img, origin = "lower")
-    plt.show()
-    if save == True:
-        pathg = PATH_TO_RESULTS_FIGURES
-        plt.savefig(pathg+"\\img_"+n_speci+".pdf", dpi = 300 )
-        figs.write_image(pathg+"\\scatter_"+n_speci+".pdf")
 
 def sphere(dz0, ct, dt0, r0ly, source1, save = False):
     A = 0
@@ -138,50 +109,23 @@ def sphere(dz0, ct, dt0, r0ly, source1, save = False):
     LE_sphere1source1 = LE.LESphereCentered(ct, sphere1, source1)
     x_inter_values, y_inter_values, z_inter_values, new_xs, new_ys = LE_sphere1source1.run()
     cossigma, surface = sb.SurfaceBrightnessAnalytical(source1, LE_sphere1source1, [x_inter_values, y_inter_values, z_inter_values]).calculate_surface_brightness()
-    new_xs = utils.convert_ly_to_arcsec(source1.d, new_xs)
-    new_ys = utils.convert_ly_to_arcsec(source1.d, new_ys)
-    r_in = utils.convert_ly_to_arcsec(source1.d, LE_sphere1source1.r_le_in)
-    r_out = utils.convert_ly_to_arcsec(source1.d, LE_sphere1source1.r_le_out)
 
-
-    # fig, ax = plt.subplots(1,1, figsize = (8,8))
     n_speci = f"ShereCentered_dt0_{int(dt0 / fc.dtoy)}_ct{int(ct / fc.dtoy)}_r{params[-1]}_dz0{dz0 / fc.pctoly}"
-    # utils.plot(new_xs, new_ys, surface, 0, 0, ax, fig, save = False, name = n_speci)
 
-    surface_val, surface_img, x_img, y_img = LEImageAnalytical(new_xs, new_ys, surface, r_in, r_out, pixel_resolution = 0.2, cmap = 'magma_r').create_le_surface(sphere1, [0, 0])
+    le_img = LEImageAnalytical(LE_sphere1source1, sphere1, surface, pixel_resolution = 0.2, cmap = 'magma_r')
+    surface_val, surface_img, x_img, y_img = le_img.create_le_surface()
 
-    if save == True:
-        pathg = PATH_TO_RESULTS_SIMULATIONS 
-        #-- save xy projection, the view as observer and surface brightness
-        np.save(pathg+"\\x_inter_arcsec"+n_speci+".npy", new_xs)
-        np.save(pathg+"\\y_inter_arcsec"+n_speci+".npy", new_ys)
-        np.save(pathg+"\\surface_"+n_speci+".npy", surface)
+    info_le = [{'r_in (arcsec)': le_img.r_le_in,
+                'r_out (arcsec)': le_img.r_le_out,
+                'act (arcsec)': le_img.act,
+                'bct (arcsec)': le_img.bct,
+                'r0ly': params[-1],
+                'dz0 (ly)': dz0,
+                'dt0 (days)': int(round(dt0 / fc.dtoy)),
+                'ct (days)': int(round(ct / fc.dtoy))}]
+    
 
-        # -- save the intersection points in xyz system in ly
-        np.save(pathg+"\\x_inter_ly"+n_speci+".npy", x_inter_values)
-        np.save(pathg+"\\y_inter_ly"+n_speci+".npy", y_inter_values)
-        np.save(pathg+"\\z_inter_ly"+n_speci+".npy", z_inter_values)
-
-    surface_300_norm = ( surface - np.nanmin(surface)  ) / (np.nanmax(surface) - np.nanmin(surface))
-    cmap = matplotlib.colormaps.get_cmap('magma_r')
-    normalize = matplotlib.colors.Normalize(vmin=np.nanmin(surface_300_norm), vmax=np.nanmax(surface_300_norm))
-
-    figs = go.Figure()
-
-    figs = go.Figure()
-    figs.add_trace(go.Scatter(
-        x=new_xs[0,0,:],
-        y=new_ys[0,0,:],
-        marker=dict(color=[f'rgb({int(cc1[0])}, {int(cc1[1])}, {int(cc1[2])})' for cc1 in cmap(normalize(surface_300_norm)) * 255], size=10),
-        mode="markers")
-              )
-    figs.add_trace(go.Scatter(
-        x=new_xs[0,1,:],
-        y=new_ys[0,1,:],
-        marker=dict(color=[f'rgb({int(cc1[0])}, {int(cc1[1])}, {int(cc1[2])})' for cc1 in cmap(normalize(surface_300_norm)) * 255], size=10),
-        mode="markers")
-              )
-    # figs.show()
+    figs = LE_sphere1source1.plot(le_img.new_xs, le_img.new_ys, surface, n_speci)
 
     fig, ax = plt.subplots(1,1, figsize = (8,8))
     ax.imshow(surface_img, origin = "lower")
@@ -191,6 +135,19 @@ def sphere(dz0, ct, dt0, r0ly, source1, save = False):
         pathg = PATH_TO_RESULTS_FIGURES
         plt.savefig(pathg+"\\img_"+n_speci+".pdf", dpi = 300 )
         figs.write_image(pathg+"\\scatter_"+n_speci+".pdf")
+
+        pathg = PATH_TO_RESULTS_SIMULATIONS 
+        with open(pathg+'\\meta_info'+n_speci+'.pkl', 'wb') as f:
+            pickle.dump(info_le, f)
+        #-- save xy projection, the view as observer and surface brightness
+        np.save(pathg+"\\x_inter_arcsec"+n_speci+".npy", new_xs)
+        np.save(pathg+"\\y_inter_arcsec"+n_speci+".npy", new_ys)
+        np.save(pathg+"\\surface_"+n_speci+".npy", surface)
+
+        # -- save the intersection points in xyz system in ly
+        np.save(pathg+"\\x_inter_ly"+n_speci+".npy", x_inter_values)
+        np.save(pathg+"\\y_inter_ly"+n_speci+".npy", y_inter_values)
+        np.save(pathg+"\\z_inter_ly"+n_speci+".npy", z_inter_values)
 
 def blub(dz0, ct, params, source1, save = False):
 
@@ -269,35 +226,21 @@ def plane_dust(dz0, ct, dt0, dust_position, size_cube, params, source1, save = F
 
  
     LE_planedust1source1 = LE.LESheetDust(ct, planedust1, source1, sheet_dust_img)
-    x_inter_values, y_inter_values, z_inter_values, xy_matrix = LE_planedust1source1.run()
-    LE_planedust1source1.plot()
-
-    # print(x_inter)
-    arris = []
-    for i in range(planedust1.side_x):
-        for j in range(planedust1.side_y):
-            arris.append([xy_matrix[j, i, 0], xy_matrix[j, i, 1], xy_matrix[j, i, 2]])
-
-    arris = np.array(arris)
+    x_inter_values, y_inter_values, z_inter_values, xy_matrix = LE_planedust1source1.run(show_initial_object=True)
+    LE_planedust1source1.plot_sheetdust()
 
     cossigma, surface_total = sb.SurfaceBrightnessDustSheetPlane(source1, 
                                                                  LE_planedust1source1,
                                                                  planedust1, 
                                                                  xy_matrix).calculate_surface_brightness()
 
-    flat = xy_matrix[:, :, :2].reshape(planedust1.side_x*planedust1.side_y, 2)
-    cord = np.array([(xf, yf) for xf, yf in flat if xf != 0 or yf != 0])
-    flat_sb = surface_total.reshape(surface_total.shape[0]*surface_total.shape[1])
 
-    x_inter_arcsec = utils.convert_ly_to_arcsec(source1.d, cord[:, 0])
-    y_inter_arcsec = utils.convert_ly_to_arcsec(source1.d, cord[:, 1])
-    surface_total = flat_sb[flat[:,0]!=0]
-    print(flat[:,1])
-
-    print("surface shape")
-    print(surface_total.shape)
-
-    surface_val, surface_img, x_img, y_img = LEImageNonAnalytical(x_inter_arcsec, y_inter_arcsec, surface_total, pixel_resolution = 0.2, cmap = 'magma_r').create_le_surface(planedust1)
+    le_img = LEImageNonAnalytical(LE_planedust1source1, 
+                                  planedust1, 
+                                  surface_total, 
+                                  pixel_resolution = 0.2, 
+                                  cmap = 'magma_r')
+    surface_val, surface_img, x_img, y_img = le_img.create_le_surface()
 
 
     n_speci = f"planedust_{CUBE_NAME}_dt0_{int(dt0 / fc.dtoy)}_ct{int(ct / fc.dtoy)}_c{dust_position}_size{size_cube}{dust_shape}dz0{dz0}"
@@ -309,56 +252,31 @@ def plane_dust(dz0, ct, dt0, dust_position, size_cube, params, source1, save = F
                 'dt0 (days)': int(round(dt0 / fc.dtoy)),
                 'ct (days)': int(round(ct / fc.dtoy))}]
     
+ 
+    figs = LE_planedust1source1.plot(le_img.new_xs, le_img.new_ys, le_img.surface_original, n_speci)
 
+    fig, ax = plt.subplots(1,1, figsize = (8,8))
+    ax.imshow(surface_img, origin = "lower")
+    plt.show()
     if save == True:
+        pathg = PATH_TO_RESULTS_FIGURES
+        plt.savefig(pathg+"\\img_"+n_speci+".pdf", dpi = 300 )
+        figs.write_image(pathg+"\\scatter_"+n_speci+".pdf")
+
         pathg = PATH_TO_RESULTS_SIMULATIONS 
         with open(pathg+'\\meta_info'+n_speci+'.pkl', 'wb') as f:
             pickle.dump(info_le, f)
         #-- save xy projection, the view as observer and surface brightness
-        np.save(pathg+"\\x_inter_arcsec"+n_speci+".npy", x_inter_arcsec)
-        np.save(pathg+"\\y_inter_arcsec"+n_speci+".npy", y_inter_arcsec)
+        np.save(pathg+"\\x_inter_arcsec"+n_speci+".npy", le_img.new_xs)
+        np.save(pathg+"\\y_inter_arcsec"+n_speci+".npy", le_img.new_ys)
         np.save(pathg+"\\xy_matrix"+n_speci+".npy", xy_matrix)
-        np.save(pathg+"\\surface_"+n_speci+".npy", surface_total)
+        np.save(pathg+"\\surface_"+n_speci+".npy", le_img.surface_original)
 
         # -- save the intersection points in xyz system in ly
         np.save(pathg+"\\x_inter_ly"+n_speci+".npy", x_inter_values)
         np.save(pathg+"\\y_inter_ly"+n_speci+".npy", y_inter_values)
         np.save(pathg+"\\z_inter_ly"+n_speci+".npy", z_inter_values)
-
-
-
     
-    surface_300_norm = ( surface_total - np.nanmin(surface_total)  ) / (np.nanmax(surface_total) - np.nanmin(surface_total))
-    cmap = matplotlib.colormaps.get_cmap('magma_r')
-    normalize = matplotlib.colors.Normalize(vmin=np.nanmin(surface_300_norm), vmax=np.nanmax(surface_300_norm))
-
-    figs = go.Figure()
-    figs.add_trace(go.Scatter(
-        x=x_inter_arcsec,
-        y=y_inter_arcsec,
-        marker=dict(color=[f'rgb({int(cc1[0])}, {int(cc1[1])}, {int(cc1[2])})' for cc1 in cmap(normalize(surface_300_norm)) * 255], size=10),
-        mode="markers")
-                )
-    figs.show()
-
-    # figs1 = go.Figure()
-    # figs1.add_trace(go.Scatter3d(
-    #     x=np.array(arris)[:,0],
-    #     y=np.array(arris)[:,1],
-    #     z=np.array(arris)[:,2],
-    #     marker=dict(size=10),
-    #     mode="markers")
-    #             )
-    # figs1.show()
-
-
-    fig, ax = plt.subplots(1,1, figsize = (8,8))
-    ax.imshow(surface_img, origin = "lower")
-    if save == True:
-        pathg = PATH_TO_RESULTS_FIGURES
-        plt.savefig(pathg+"\\img_"+n_speci+".pdf", dpi = 300 )
-        figs.write_image(pathg+"\\scatter_"+n_speci+".pdf")
-    plt.show()
 
 # dz0 = 0.02 #* fc.pctoly #vc.dz0 #ly
 # ct =  180 * fc.dtoy #180
@@ -367,29 +285,29 @@ def plane_dust(dz0, ct, dt0, dust_position, size_cube, params, source1, save = F
 # source1 = Source(dt0, vc.d, dc.Flmax)
 # sphere(dz0, ct, dt0, r0ly, source1, save=True)
 
-dz0 = 0.02 * fc.pctoly #vc.dz0 #ly
-ct =  180 * fc.dtoy #180
-dt0 = 50 * fc.dtoy #180
-# this is the same solution as v838
-z0ly = 1 * fc.pctoly
-alpha = 15
-a = np.tan(np.deg2rad(alpha))
-source1 = Source(dt0, vc.d, dc.Flmax)
-plane(dz0, ct, dt0, [a, 0, 1, -z0ly], source1, save=False)
-
-# dz0 = 0.02 * fc.pctoly#ly
-# ct =  365*30 * fc.dtoy #180
-# dt0 = 365*20 * fc.dtoy #180
-# z0ly = 10 * fc.pctoly
+# dz0 = 0.02 * fc.pctoly #vc.dz0 #ly
+# ct =  180 * fc.dtoy #180
+# dt0 = 50 * fc.dtoy #180
+# # this is the same solution as v838
+# z0ly = 1 * fc.pctoly
 # alpha = 15
 # a = np.tan(np.deg2rad(alpha))
-# size_cube = np.array([1,1]) * fc.pctoly #ly
-# params = [a, 0.0, 1.0, -z0ly]
-# x0 = 15 * fc.pctoly
-# y0 = 1.0 * fc.pctoly
-# z0 = (-params[-1] - params[0]*x0 - params[1]*y0) / params[2]
-# dust_position = np.array([x0, y0, z0])
-# print(x0, y0, z0)
+# source1 = Source(dt0, vc.d, dc.Flmax)
+# plane(dz0, ct, dt0, [a, 0, 1, -z0ly], source1, save=False)
+
+dz0 = 0.02 * fc.pctoly#ly
+ct =  180*2 * fc.dtoy #180
+dt0 = 180 * fc.dtoy #180
+z0ly = 10 * fc.pctoly
+alpha = 15
+a = np.tan(np.deg2rad(alpha))
+size_cube = np.array([1,1]) * fc.pctoly #ly
+params = [a, 0.0, 10.0, -z0ly]
+x0 = 1 * fc.pctoly
+y0 = 1.0 * fc.pctoly
+z0 = (-params[-1] - params[0]*x0 - params[1]*y0) / params[2]
+dust_position = np.array([x0, y0, z0])
+print(x0, y0, z0)
 
 # xp = np.linspace(-10,10,100)
 # xp, yp = np.meshgrid(xp, xp)
@@ -410,8 +328,8 @@ plane(dz0, ct, dt0, [a, 0, 1, -z0ly], source1, save=False)
 #     opacity=1)
 #             )
 # figs.show()
-# source1 = Source(dt0, vc.d, dc.Flmax)
-# plane_dust(dz0, ct, dt0, dust_position, size_cube, params, source1, save=False)
+source1 = Source(dt0, vc.d, dc.Flmax)
+plane_dust(dz0, ct, dt0, dust_position, size_cube, params, source1, save=False)
 
 
 

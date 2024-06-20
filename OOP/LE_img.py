@@ -14,11 +14,11 @@ import utils as utils
 from DustShape import SphericalBlub, PlaneDust
 
 class LEImage:
-    def __init__(self, new_xs, new_ys, surface, pixel_resolution = 0.2, cmap = 'magma_r'):
+    def __init__(self, LE_geometryanalyticalsource, surface, pixel_resolution = 0.2, cmap = 'magma_r'):
         self.pixel = pixel_resolution # arcsec
         self.cmap = cmap
-        self.new_xs = new_xs
-        self.new_ys = new_ys
+        self.new_xs = utils.convert_ly_to_arcsec(LE_geometryanalyticalsource.d, LE_geometryanalyticalsource.x_projected)
+        self.new_ys = utils.convert_ly_to_arcsec(LE_geometryanalyticalsource.d, LE_geometryanalyticalsource.y_projected)
         self.surface_original = surface
         self.surface_val = 0
         self.surface_img = 0
@@ -65,10 +65,17 @@ class LEImage:
 
 class LEImageAnalytical(LEImage):
 
-    def __init__(self, new_xs, new_ys, surface, r_le_in, r_le_out, pixel_resolution = 0.2, cmap = 'magma_r'):
-        super().__init__(new_xs, new_ys, surface, pixel_resolution, cmap)
-        self.r_le_in = r_le_in
-        self.r_le_out = r_le_out
+    def __init__(self, LE_geometryanalyticalsource, geometry, surface, pixel_resolution = 0.2, cmap = 'magma_r'):
+        super().__init__(LE_geometryanalyticalsource, surface, pixel_resolution, cmap)
+        self.r_le_in = utils.convert_ly_to_arcsec(LE_geometryanalyticalsource.d, LE_geometryanalyticalsource.r_le_in)
+        self.r_le_out = utils.convert_ly_to_arcsec(LE_geometryanalyticalsource.d, LE_geometryanalyticalsource.r_le_out)
+
+        self.geometry_to_use = geometry
+        self.act = LE_geometryanalyticalsource.ct * (self.geomtry_to_use.eq_params[0] / self.geomtry_to_use.eq_params[2])
+        self.act = utils.convert_ly_to_arcsec(LE_geometryanalyticalsource.d, self.act)
+        self.bct = LE_geometryanalyticalsource.ct * (self.geomtry_to_use.eq_params[1] / self.geomtry_to_use.eq_params[2])
+        self.bct = utils.convert_ly_to_arcsec(LE_geometryanalyticalsource.d, self.bct)
+
         # self.max_points = int(self.new_xs.shape[2]/2)
 
 
@@ -82,21 +89,19 @@ class LEImageAnalytical(LEImage):
         surface_inter_y = interpolate.LinearNDInterpolator(list(zip(self.new_xs[0,0,:], self.new_ys[0,0,:])), self.surface_original)
         return surface_inter_y
     
-    def create_le_surface(self, DustShape, center):
+    def create_le_surface(self):
 
         x_img = []
         y_img = []
-        act = center[0]
-        bct = center[1]
         R_IN, R_OUT = self.interpolation_radiis()
         surface_inter_y  = self.interpolation_surface()
-        x_size_img, y_size_img, x_all, y_all = self.define_image_size(DustShape)
+        x_size_img, y_size_img, x_all, y_all = self.define_image_size(self.geometry_to_use)
         self.surface_val = np.zeros([y_size_img, x_size_img])
 
         for i in range(x_size_img):
             for j in range(y_size_img):
                 # print(j,i)
-                if (R_IN(x_all[j,i], y_all[j,i]) <= np.sqrt((x_all[j,i] + act)**2 + (y_all[j,i] + bct)**2) <= R_OUT(x_all[j,i], y_all[j,i])):
+                if (R_IN(x_all[j,i], y_all[j,i]) <= np.sqrt((x_all[j,i] + self.act)**2 + (y_all[j,i] + self.bct)**2) <= R_OUT(x_all[j,i], y_all[j,i])):
                     # print(j,i)
                     x_img.append(x_all[j,i])
                     y_img.append(y_all[j,i])
@@ -109,11 +114,20 @@ class LEImageAnalytical(LEImage):
 
 class LEImageNonAnalytical(LEImage):
     
-    def __init__(self, new_xs, new_ys, surface, pixel_resolution=0.2, cmap='magma_r'):
-        super().__init__(new_xs, new_ys, surface, pixel_resolution, cmap)
+    def __init__(self, LE_planedust1source1, geometry, surface, pixel_resolution=0.2, cmap='magma_r'):
+        super().__init__(LE_planedust1source1, surface, pixel_resolution, cmap)
         self.surface_img = 0
+        self.geometry_to_use = geometry
+        flat = LE_planedust1source1.xy_matrix[:, :, :2].reshape(self.geometry_to_use.side_x*self.geometry_to_use.side_y, 2)
+        cord = np.array([(xf, yf) for xf, yf in flat if xf != 0 or yf != 0])
+        self.new_xs = utils.convert_ly_to_arcsec(LE_planedust1source1.d, cord[:, 0])
+        self.new_ys = utils.convert_ly_to_arcsec(LE_planedust1source1.d, cord[:, 1])
 
-    def define_shape_to_interpolate(self, DustShape):
+
+        flat_sb = surface.reshape(surface.shape[0]*surface.shape[1])
+        self.surface_original = flat_sb[flat[:,0]!=0]
+
+    def define_shape_to_interpolate(self, show_shape=False):
 
         points = list(zip(self.new_xs, self.new_ys))
         index = [i[0] for i in sorted(enumerate(points), key=lambda x: [x[1][1], x[1][0]])]
@@ -123,14 +137,15 @@ class LEImageNonAnalytical(LEImage):
         # print(alpha_shape)
         if alpha_shape.geom_type == 'MultiPolygon':
             geoms = [g for g in alpha_shape.geoms]
-        fig, ax = plt.subplots()
-        ax.scatter(*zip(*mpoints[::100]), alpha=0.2)
-        if alpha_shape.geom_type == 'MultiPolygon':
-            print("it is multipolygon")
-            for i in geoms:
-                ax.add_patch(PolygonPatch(i, alpha=0.3))
-        else:
-            ax.add_patch(PolygonPatch(alpha_shape, alpha=0.3))
+        if show_shape == True:
+            fig, ax = plt.subplots()
+            ax.scatter(*zip(*mpoints[::100]), alpha=0.2)
+            if alpha_shape.geom_type == 'MultiPolygon':
+                print("it is multipolygon")
+                for i in geoms:
+                    ax.add_patch(PolygonPatch(i, alpha=0.3))
+            else:
+                ax.add_patch(PolygonPatch(alpha_shape, alpha=0.3))
 
         plt.show()
         # print(self.surface_original[index])
@@ -139,9 +154,9 @@ class LEImageNonAnalytical(LEImage):
         return alpha_shape, surface_inter_y
     
 
-    def create_le_surface(self, DustShape):
-        x_size_img, y_size_img, x_all, y_all = self.define_image_size(DustShape)
-        alpha_shape, surface_inter_y = self.define_shape_to_interpolate(DustShape)
+    def create_le_surface(self, show_shape=False):
+        x_size_img, y_size_img, x_all, y_all = self.define_image_size(self.geometry_to_use)
+        alpha_shape, surface_inter_y = self.define_shape_to_interpolate(show_shape)
         self.surface_val = np.zeros([y_size_img, x_size_img])
 
         x_img = []

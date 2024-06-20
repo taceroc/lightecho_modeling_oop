@@ -81,20 +81,23 @@ class SurfaceBrightness:
         """
         self.Fl = []
         self.rhos_half()
-        self.lc['time'] = self.lc['time'] * fc.dtoy
+        # self.lc['time'] = self.lc['time'] * fc.dtoy
         # t_tilde =  self.ct - (np.sqrt(self.rhos**2 + self.z_inter_values**2) / fc.c) - (np.abs(self.z_inter_values) / fc.c)
-        t_tilde = self.ct - np.linalg.norm([self.x_inter_values, self.y_inter_values, self.z_inter_values], axis=0) + (np.abs(self.z_inter_values) / fc.c)
-        print(t_tilde)
-        for t_tildi in t_tilde:
+        # t_tilde = self.ct - np.linalg.norm([self.x_inter_values, self.y_inter_values, self.z_inter_values], axis=0) + (np.abs(self.z_inter_values) / fc.c)
+        self.t_tilde = (self.ct + self.lc['time'][self.lc['mag'] == self.lc['mag'].min()] - 
+                        np.linalg.norm([self.x_inter_values, self.y_inter_values, self.z_inter_values], axis=0) -
+                        np.linalg.norm([self.x_inter_values, self.y_inter_values, (self.d - self.z_inter_values)], axis=0))
+        # print((self.d+self.t_tilde)/fc.dtoy)
+    
+        for it, t_tildi in enumerate(self.t_tilde):
+            if self.t_tilde[it]+self.d < 0:
+                self.t_tilde[it] = -self.d     
             # print(self.lc['time']<=t_tildi)
-            time_up = self.lc['time'][self.lc['time']<=t_tildi]
-            mag_upto = self.lc['mag'][self.lc['time']<=t_tildi]
+            time_up = self.lc['time'][self.lc['time']<=self.t_tilde[it]+self.d]
+            mag_upto = self.lc['mag'][self.lc['time']<=self.t_tilde[it]+self.d]
             flux_upto = 10**((-48.6 - mag_upto) / 2.5)
-            if np.sum([self.lc['time']<=t_tildi]) == 0:
-                print(t_tildi, 'no time')
+                
             self.Fl.append(integrate.simpson(flux_upto, time_up))
-        # return t_tilde
-
 
 class SurfaceBrightnessAnalytical(SurfaceBrightness):
     def __init__(self, source, LE, xyz_intersection):
@@ -285,13 +288,13 @@ class SurfaceBrightnessDustSheetPlane(SurfaceBrightness):
 
         for i in range(self.size_x):
             for j in range(self.size_y):
-                xs = self.xy_matrix[j, i, 0]
-                ys = self.xy_matrix[j, i, 1]
-                zs = self.xy_matrix[j, i, 2]
-                ll = np.sqrt(xs**2 + ys**2 + (zs - self.d) ** 2)
-                r = np.sqrt(xs**2 + ys**2 + zs**2)
-                cossigma = (xs**2 + ys**2 + zs * (zs - self.d)) / (r * ll)
-                rhodrho, rhos, half_obs_thickness = super().rhos_half(zs)
+                self.x_inter_values = self.xy_matrix[j, i, 0]
+                self.y_inter_values = self.xy_matrix[j, i, 1]
+                self.z_inter_values = self.xy_matrix[j, i, 2]
+                ll = np.sqrt(self.x_inter_values**2 + self.y_inter_values**2 + (self.z_inter_values - self.d) ** 2)
+                r = np.sqrt(self.x_inter_values**2 + self.y_inter_values**2 + self.z_inter_values**2)
+                cossigma = (self.x_inter_values**2 + self.y_inter_values**2 + self.z_inter_values * (self.z_inter_values - self.d)) / (r * ll)
+                super().rhos_half()
                 # print(r*ll)
                 cossigmam = np.mean(cossigma)
                 if (cossigmam >= -1) and (cossigmam <= 1):
@@ -313,7 +316,7 @@ class SurfaceBrightnessDustSheetPlane(SurfaceBrightness):
                         * Ir
                         * S[j, i]
                         * self.dz0
-                        / (4 * np.pi * r * rhodrho)
+                        / (4 * np.pi * r * self.rhodrho)
                     )
 
         return self.cossigma, self.sb_true_matrix

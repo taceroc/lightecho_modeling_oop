@@ -4,6 +4,7 @@ sys.path.append(CONFIG_PATH_UTILS)
 import utils as utils
 import numpy as np
 from scipy import interpolate
+import matplotlib
 sys.path.append(CONFIG_PATH_DUST)
 import var_constants as vc
 import fix_constants as fc
@@ -58,8 +59,12 @@ class LE:
         rhos = np.sqrt(2 * self.z_inter_values * self.ct + (self.ct)**2 )
         half_obs_thickness = np.sqrt( (self.ct / rhos) ** 2 * self.dz0 ** 2 + ( (rhos * fc.c / (2 * self.ct)) + ( fc.c * self.ct / (2 * rhos) )) ** 2 * self.dt0  ** 2 ) / 2
         # -- include the thickness in xy plane
-        self.r_le_out = np.ones(len(half_obs_thickness)) * r_le 
-        self.r_le_in = r_le - 2*half_obs_thickness
+        if len(np.array(half_obs_thickness)) != 1:
+            self.r_le_out = np.ones(len(half_obs_thickness)) * r_le 
+            self.r_le_in = r_le - 2*half_obs_thickness
+        else:
+            self.r_le_out = r_le 
+            self.r_le_in = r_le - 2*half_obs_thickness
         
     def final_xy_projected(self):
         """
@@ -102,6 +107,41 @@ class LE:
         
         return self.x_inter_values, self.y_inter_values, self.z_inter_values, self.x_projected, self.y_projected
     
+    def plot(self, new_xs, new_ys, surface, titles):
+        surface_300_norm = ( surface - np.nanmin(surface)  ) / (np.nanmax(surface) - np.nanmin(surface))
+        cmap = matplotlib.colormaps.get_cmap('magma_r')
+        normalize = matplotlib.colors.Normalize(vmin=np.nanmin(surface_300_norm), vmax=np.nanmax(surface_300_norm))
+        if len(new_xs.shape) == 3:
+            figs = go.Figure()
+            figs.add_trace(go.Scatter(
+                x=new_xs[0,0,:],
+                y=new_ys[0,0,:],
+                marker=dict(color=[f'rgb({int(cc1[0])}, {int(cc1[1])}, {int(cc1[2])})' for cc1 in cmap(normalize(surface_300_norm)) * 255], size=10),
+                mode="markers")
+                    )
+            figs.add_trace(go.Scatter(
+                x=new_xs[0,1,:],
+                y=new_ys[0,1,:],
+                marker=dict(color=[f'rgb({int(cc1[0])}, {int(cc1[1])}, {int(cc1[2])})' for cc1 in cmap(normalize(surface_300_norm)) * 255], size=10),
+                mode="markers")
+                    )
+            
+            figs.update_layout(
+                title=titles,
+                xaxis_title="x [arcsec]",
+                yaxis_title="y [arcsec]")
+            figs.show()
+        else:
+            figs = go.Figure()
+            figs.add_trace(go.Scatter(
+                x=new_xs,
+                y=new_xs,
+                marker=dict(color=[f'rgb({int(cc1[0])}, {int(cc1[1])}, {int(cc1[2])})' for cc1 in cmap(normalize(surface_300_norm)) * 255], size=10),
+                mode="markers")
+                    )
+            figs.show()
+
+        return figs
 
 class LEPlane(LE):
     """
@@ -313,7 +353,7 @@ class LESphericalBulb(LE):
         return self.x_inter_values, self.y_inter_values, self.z_inter_values, self.xy_matrix, self.z_matrix
     
 
-    def plot(self):
+    def plot_bulb(self):
         """
             Plot Paraboloid + Sphere + intersection points 
             in 3D and interactive
@@ -397,20 +437,24 @@ class LESheetDust(LE):
         self.r_le2 = -2 * self.ct * (self.D/self.F) + (self.ct)**2 * (1 + (self.B/self.F)**2 + (self.A/self.F)**2)
         return self.r_le2
     
-    def get_intersection_xyz(self):
+    def get_intersection_xyz(self, show_initial_object=False):
         """
             Return x,y,z intersection in ly 
         """
         self.calculate_rle2()
         theta_p = np.linspace(0, 2*np.pi, 1000)
-        self.calculate_rho_thickness()
+        # self.calculate_rho_thickness()
 
         self.x_inter_values = np.sqrt(self.r_le2) * np.cos(theta_p) - (self.A/self.F)*self.ct
         self.y_inter_values = np.sqrt(self.r_le2) * np.sin(theta_p) - (self.B/self.F)*self.ct
         
-        
-        # calculate the z intersections for each "infinitesimal" plane
+        # calculate the z intersections plane
         self.z_inter_values = -(self.D/self.F) - (self.A * self.x_inter_values / self.F) - (self.B * self.y_inter_values / self.F)
+        
+
+        print(f"There are {self.x_inter_values.shape} initial points in x")
+        print(f"There are {self.y_inter_values.shape} initial points in y")
+        print(f"There are {self.z_inter_values.shape} initial points in z")
         # super().calculate_rho_thickness()
         # print(self.r_le_in, self.r_le_out)
         self.x_projected, self.y_projected = super().final_xy_projected()
@@ -433,14 +477,27 @@ class LESheetDust(LE):
         r_in = R_IN(x_all, y_all)
         r_out = R_OUT(x_all, y_all)
 
+
+        if show_initial_object == True:
+            self.plot_initial_objects()
+
+
         intersection_points = utils.cal_inter_sheetdust(x_all, y_all, z_all, 
                                                         r_in, r_out, act, bct, self.x_min, self.x_max, self.y_min, self.y_max, self.z_min, self.z_max,
                                                         [self.A, self.B, self.F, self.D])
 
+        
+        
         self.x_inter_values = np.concatenate([intersection_points[0]])
         self.y_inter_values = np.concatenate([intersection_points[1]])
         self.z_inter_values = np.concatenate([intersection_points[2]])
-        
+
+
+
+        print(f"There are {self.x_inter_values.shape} intersections points in x")
+        print(f"There are {self.y_inter_values.shape} intersections points in y")
+        print(f"There are {self.z_inter_values.shape} intersections points in z")
+
         return self.x_inter_values, self.y_inter_values, self.z_inter_values
 
     
@@ -484,14 +541,14 @@ class LESheetDust(LE):
 
         return self.xy_matrix
     
-    def run(self):
-        self.x_inter_values, self.y_inter_values, self.z_inter_values = self.get_intersection_xyz()
+    def run(self, show_initial_object=False):
+        self.x_inter_values, self.y_inter_values, self.z_inter_values = self.get_intersection_xyz(show_initial_object)
         self.xy_matrix = self.XYZ_merge_plane_2ddust()
         return self.x_inter_values, self.y_inter_values, self.z_inter_values, self.xy_matrix
     
     
     
-    def plot(self):
+    def plot_sheetdust(self):
         figs = go.Figure()
         figs.add_trace(go.Scatter3d(
             x = [self.x_min, self.x_max, self.x_max, self.x_min, self.x_min, self.x_max, self.x_max, self.x_min],
@@ -503,7 +560,25 @@ class LESheetDust(LE):
             y=self.y_inter_values,
             z=self.z_inter_values,
             opacity=0.2))
+        figs.show()
+
+    def plot_initial_objects(self):
+        figs = go.Figure()
+        figs.add_trace(go.Scatter3d(
+            x=self.x_inter_values,
+            y=self.y_inter_values,
+            z=self.z_inter_values,
+            opacity=1))
+        xp, yp = np.meshgrid(self.x_inter_values, self.y_inter_values)
         figs.add_trace(go.Surface(
-            z = (-self.A * self.x_inter_values - self.B * self.y_inter_values - self.D) / self.F,
-            opacity=0.2))
+            x=xp,
+            y=yp,
+            z=-(self.D/self.F) - (self.A * xp / self.F) - (self.B * yp / self.F),
+            opacity=1))
+        
+        figs.add_trace(go.Scatter3d(
+            x = [self.x_min, self.x_max, self.x_max, self.x_min, self.x_min, self.x_max, self.x_max, self.x_min],
+            y = [self.y_min, self.y_min, self.y_max, self.y_max, self.y_max, self.y_max, self.y_min, self.y_min,],
+            z = [self.z_min, self.z_min, self.z_min, self.z_min, self.z_max, self.z_max, self.z_max, self.z_max],
+              showlegend = False))
         figs.show()
