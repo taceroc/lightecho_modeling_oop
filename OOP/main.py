@@ -244,13 +244,7 @@ def plane_dust(dz0, ct, dt0, dust_position, size_cube, params, source1, save = F
 
 
     n_speci = f"planedust_{CUBE_NAME}_dt0_{int(dt0 / fc.dtoy)}_ct{int(ct / fc.dtoy)}_c{dust_position}_size{size_cube}{dust_shape}dz0{dz0}"
-    info_le = [{
-                'dust_shape (ly)': dust_shape,
-                'size_cube (ly)': size_cube,
-                'dust_position (ly)': dust_position,
-                'dz0 (ly)': dz0,
-                'dt0 (days)': int(round(dt0 / fc.dtoy)),
-                'ct (days)': int(round(ct / fc.dtoy))}]
+
     
  
     figs = LE_planedust1source1.plot(le_img.new_xs, le_img.new_ys, le_img.surface_original, n_speci)
@@ -262,6 +256,14 @@ def plane_dust(dz0, ct, dt0, dust_position, size_cube, params, source1, save = F
         pathg = PATH_TO_RESULTS_FIGURES
         plt.savefig(pathg+"\\img_"+n_speci+".pdf", dpi = 300 )
         figs.write_image(pathg+"\\scatter_"+n_speci+".pdf")
+        info_le = [{
+            'dust_shape (ly)': dust_shape,
+            'size_cube (ly)': size_cube,
+            'dust_position (ly)': dust_position,
+            'dz0 (ly)': dz0,
+            'dt0 (days)': int(round(dt0 / fc.dtoy)),
+            'ct (days)': int(round(ct / fc.dtoy)),
+            'file_name': pathg+"\\surface_"+n_speci+".npy"}]
 
         pathg = PATH_TO_RESULTS_SIMULATIONS 
         with open(pathg+'\\meta_info'+n_speci+'.pkl', 'wb') as f:
@@ -270,7 +272,7 @@ def plane_dust(dz0, ct, dt0, dust_position, size_cube, params, source1, save = F
         np.save(pathg+"\\x_inter_arcsec"+n_speci+".npy", le_img.new_xs)
         np.save(pathg+"\\y_inter_arcsec"+n_speci+".npy", le_img.new_ys)
         np.save(pathg+"\\xy_matrix"+n_speci+".npy", xy_matrix)
-        np.save(pathg+"\\surface_"+n_speci+".npy", le_img.surface_original)
+        np.save(pathg+"\\surface_"+n_speci+".npy", surface_img)
 
         # -- save the intersection points in xyz system in ly
         np.save(pathg+"\\x_inter_ly"+n_speci+".npy", x_inter_values)
@@ -296,8 +298,8 @@ def plane_dust(dz0, ct, dt0, dust_position, size_cube, params, source1, save = F
 # plane(dz0, ct, dt0, [a, 0, 1, -z0ly], source1, save=False)
 
 dz0 = 0.02 * fc.pctoly#ly
-ct =  180*2 * fc.dtoy #180
-dt0 = 180 * fc.dtoy #180
+ct =  180*5 * fc.dtoy #180
+dt0 = 180*2 * fc.dtoy #180
 z0ly = 10 * fc.pctoly
 alpha = 15
 a = np.tan(np.deg2rad(alpha))

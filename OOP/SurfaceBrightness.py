@@ -88,7 +88,7 @@ class SurfaceBrightness:
                         np.linalg.norm([self.x_inter_values, self.y_inter_values, self.z_inter_values], axis=0) -
                         np.linalg.norm([self.x_inter_values, self.y_inter_values, (self.d - self.z_inter_values)], axis=0))
         # print((self.d+self.t_tilde)/fc.dtoy)
-    
+        # add +d/c because the zero of your data is when detecting 1st light
         for it, t_tildi in enumerate(self.t_tilde):
             if self.t_tilde[it]+self.d < 0:
                 self.t_tilde[it] = -self.d     
