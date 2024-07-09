@@ -71,9 +71,9 @@ class LEImageAnalytical(LEImage):
         self.r_le_out = utils.convert_ly_to_arcsec(LE_geometryanalyticalsource.d, LE_geometryanalyticalsource.r_le_out)
 
         self.geometry_to_use = geometry
-        self.act = LE_geometryanalyticalsource.ct * (self.geomtry_to_use.eq_params[0] / self.geomtry_to_use.eq_params[2])
+        self.act = LE_geometryanalyticalsource.ct * (self.geometry_to_use.eq_params[0] / self.geometry_to_use.eq_params[2]) if self.geometry_to_use.eq_params[2] != 0 else 0
         self.act = utils.convert_ly_to_arcsec(LE_geometryanalyticalsource.d, self.act)
-        self.bct = LE_geometryanalyticalsource.ct * (self.geomtry_to_use.eq_params[1] / self.geomtry_to_use.eq_params[2])
+        self.bct = LE_geometryanalyticalsource.ct * (self.geometry_to_use.eq_params[1] / self.geometry_to_use.eq_params[2]) if self.geometry_to_use.eq_params[2] != 0 else 0
         self.bct = utils.convert_ly_to_arcsec(LE_geometryanalyticalsource.d, self.bct)
 
         # self.max_points = int(self.new_xs.shape[2]/2)
@@ -147,7 +147,7 @@ class LEImageNonAnalytical(LEImage):
             else:
                 ax.add_patch(PolygonPatch(alpha_shape, alpha=0.3))
 
-        plt.show()
+            plt.show()
         # print(self.surface_original[index])
         surface_inter_y = utils.interpolation_surface(arr_points[index, 0], arr_points[index, 1], self.surface_original[index])
 

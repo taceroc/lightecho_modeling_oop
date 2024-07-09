@@ -103,6 +103,19 @@ class LE:
             Return x,y,z intersection in ly and x,y projected in the sky plane in arcseconds
         """
         self.x_inter_values, self.y_inter_values, self.z_inter_values = self.get_intersection_xyz()
+        print(f"There are {self.x_inter_values.shape} intersections points in x")
+        print(f"There are {self.y_inter_values.shape} intersections points in y")
+        print(f"There are {self.z_inter_values.shape} intersections points in z")
+
+        def process_list(my_list):
+            if my_list[0] == 0:
+                raise ValueError("No intersection points. Cannot continue.")
+            print("Processing the list:", my_list)
+        try:
+            process_list(self.x_inter_values.shape)
+        except ValueError as e:
+            print(e)
+            sys.exit(1)
         self.x_projected, self.y_projected = self.final_xy_projected()
         
         return self.x_inter_values, self.y_inter_values, self.z_inter_values, self.x_projected, self.y_projected
@@ -130,7 +143,7 @@ class LE:
                 title=titles,
                 xaxis_title="x [arcsec]",
                 yaxis_title="y [arcsec]")
-            figs.show()
+            # figs.show()
         else:
             figs = go.Figure()
             figs.add_trace(go.Scatter(
@@ -139,7 +152,7 @@ class LE:
                 marker=dict(color=[f'rgb({int(cc1[0])}, {int(cc1[1])}, {int(cc1[2])})' for cc1 in cmap(normalize(surface_300_norm)) * 255], size=10),
                 mode="markers")
                     )
-            figs.show()
+            # figs.show()
 
         return figs
 
@@ -392,7 +405,7 @@ class LESheetDust(LE):
         """
             x: initialize x positions in ly
             ct: time of LE observation in years
-            sphere.eq_params = [A, B, C, D], (x)2 + y2 + z2 = D2
+            plane.eq_params = [A, B, C, D], Ax + By + Fz + D = 0
             sphere.dz0: depth sphere of dust in ly
             
         """
@@ -498,6 +511,8 @@ class LESheetDust(LE):
         print(f"There are {self.y_inter_values.shape} intersections points in y")
         print(f"There are {self.z_inter_values.shape} intersections points in z")
 
+
+
         return self.x_inter_values, self.y_inter_values, self.z_inter_values
 
     
@@ -543,6 +558,15 @@ class LESheetDust(LE):
     
     def run(self, show_initial_object=False):
         self.x_inter_values, self.y_inter_values, self.z_inter_values = self.get_intersection_xyz(show_initial_object)
+        def process_list(my_list):
+            if my_list[0] == 0:
+                raise ValueError("No intersection points. Cannot continue.")
+            print("Processing the list:", my_list)
+        try:
+            process_list(self.x_inter_values.shape)
+        except ValueError as e:
+            print(e)
+            sys.exit(1)
         self.xy_matrix = self.XYZ_merge_plane_2ddust()
         return self.x_inter_values, self.y_inter_values, self.z_inter_values, self.xy_matrix
     
