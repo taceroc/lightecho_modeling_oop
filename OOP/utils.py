@@ -7,7 +7,7 @@ from astropy.cosmology import FlatLambdaCDM
 from shapely.geometry import Polygon, Point
 import alphashape
 from scipy import interpolate
-from definitions import CONFIG_PATH_constants, CONFIG_PATH_UTILS, ROOT_DIR, PATH_TO_RESULTS, PATH_TO_RESULTS_SIMULATIONS, PATH_TO_RESULTS_FIGURES
+from definitions import PATH_TO_RESULTS_FIGURES
 from numba import jit, prange
 
 
@@ -155,7 +155,7 @@ def cal_inter_cube(x_p, y_p, z_p, x_min, x_max, y_min, y_max, z_min, z_max, ct, 
 
 
 @jit(nopython=True)
-def cal_inter_planedust(x_all, y_all, z_all, r_in, r_out, act, bct, x_min, x_max, y_min, y_max, z_min, z_max, params):
+def cal_inter_sheetdust(x_all, y_all, z_all, r_in, r_out, act, bct, x_min, x_max, y_min, y_max, z_min, z_max, params):
     x_all_inside = []
     y_all_inside = []
     z_all_inside = []

@@ -1,0 +1,9 @@
+{"dt0": 360,
+"ct": 900,
+"d": 16000,
+"Flmax": 1e16,
+"dz0": 0.02,
+"size_cube": [1, 1],
+"know_3d_dust_position": 1,
+"dust_position" : [1, 3, 10],
+"wave": 7.499E-01}

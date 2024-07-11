@@ -26,7 +26,7 @@ r0ly = np.array(r0) * cf.pctoly
 
 
 dkpc = 5 #kpc #distance source-earth
-d = dkpc * 1000 * cf.pctoly
+d = 19000 #dkpc * 1000 * cf.pctoly
 # L = 15,000 x 3.9e26 # watts = kg m ^2 / s^3
 L = 15e3
 L = (L * cf.lsuntol) * (cf.ytos ** 3) * (cf.pctoly ** 2) / (cf.pctom ** 2)

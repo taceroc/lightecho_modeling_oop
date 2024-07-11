@@ -1,6 +1,4 @@
 import numpy as np
-import matplotlib.pyplot as plt
-import matplotlib
 
 from astropy import units as u
 from scipy.special import erf
@@ -77,7 +75,6 @@ def Phi(mu, g):
     Value of the scattering phase function for the given scattering angle, wavelength, and size
     """
 
-    # Phi = (1 - g^2) / [(1 + g^2 - 2 g mu)^(3/2)]
     phi = (1 - g**2) / ((1 + g**2 - 2*g*mu)**(3/2))
     return phi
 

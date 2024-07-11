@@ -1,3 +1,0 @@
-https://kinsta.com/blog/python-object-oriented-programming/
-https://stackoverflow.com/questions/50027896/designing-a-python-class-when-one-method-depends-on-the-output-of-another-method
-https://stackoverflow.com/questions/9667818/python-how-to-merge-two-class
