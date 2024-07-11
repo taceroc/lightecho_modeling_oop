@@ -4,7 +4,7 @@
 profile_default/
 ipython_config.py
 /OOP/iframe_figures/
-/OOP_old/iframe_figures/
+
 __pycache__/
 
 /OOP/results/
@@ -17,7 +17,8 @@ __pycache__/
 
 
 __pycache__/
-
+/OOP_old
+/OOP_old/iframe_figures/
 /OOP_old/results/
 /OOP_old/dust/cube/Data/lightecho-dust-main/
 /OOP_old/dust/cube/Data/fcrao.ogs.lbv.noeb.patched.fits/
