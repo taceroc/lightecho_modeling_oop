@@ -19,7 +19,7 @@ sys.path.append(CONFIG_PATH_UTILS)
 import utils as utils
 
 
-def sphere(dz0, ct, dt0, r0ly, source1, save=False, show_plots=False):
+def sphere(wavel, dz0, ct, dt0, r0ly, source1, save=False, show_plots=False):
     A = 0
     B = 0
     F = 0
@@ -29,7 +29,7 @@ def sphere(dz0, ct, dt0, r0ly, source1, save=False, show_plots=False):
     sphere1 = SphereCenter(params, dz0)
     LE_sphere1source1 = LE.LESphereCentered(ct, sphere1, source1)
     x_inter_values, y_inter_values, z_inter_values, new_xs, new_ys = LE_sphere1source1.run()
-    cossigma, surface = sb.SurfaceBrightnessAnalytical(source1, LE_sphere1source1, [x_inter_values, y_inter_values, z_inter_values]).calculate_surface_brightness()
+    cossigma, surface = sb.SurfaceBrightnessAnalytical(wavel, source1, LE_sphere1source1, [x_inter_values, y_inter_values, z_inter_values]).calculate_surface_brightness()
 
     n_speci = f"ShereCentered_dt0_{int(dt0 / fc.dtoy)}_ct{int(ct / fc.dtoy)}_r{params[-1]}_dz0{round(dz0 / fc.pctoly, 2)}"
 
@@ -95,6 +95,6 @@ def run(file_name, args):
     bool_save = args[0]
     bool_show_plots = args[1]
 
-
+    wavel = parameters['wave']
     source1 = Source(dt0, d, Flmax)
-    sphere(dz0, ct, dt0, r0ly, source1, save=bool_save, show_plots=bool_show_plots)
+    sphere(wavel, dz0, ct, dt0, r0ly, source1, save=bool_save, show_plots=bool_show_plots)

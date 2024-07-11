@@ -110,7 +110,7 @@ class LE:
         def process_list(my_list):
             if my_list[0] == 0:
                 raise ValueError("No intersection points. Cannot continue.")
-            print("Processing the list:", my_list)
+            print("Intersections")
         try:
             process_list(self.x_inter_values.shape)
         except ValueError as e:
@@ -561,7 +561,7 @@ class LESheetDust(LE):
         def process_list(my_list):
             if my_list[0] == 0:
                 raise ValueError("No intersection points. Cannot continue.")
-            print("Processing the list:", my_list)
+            print("Intersections")
         try:
             process_list(self.x_inter_values.shape)
         except ValueError as e:

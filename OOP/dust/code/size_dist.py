@@ -1,6 +1,4 @@
 import numpy as np
-import matplotlib.pyplot as plt
-import matplotlib
 
 from astropy import units as u
 from scipy.special import erf
@@ -12,7 +10,6 @@ import var_constants as vc
 import dust_constants as dc
 import fix_constants as fc
 
-plt.style.use('seaborn-v0_8-colorblind')
 
 
 # curvature function
@@ -157,3 +154,43 @@ def Dist_carb(a, B1, B2):
         return Da_carb(a, B1, B2) + (dist1 * dist2)
 
 
+# distribution for carbonaceous dust given grain size
+def Dist_sili(a):
+    """
+    Calculates the grain size distribution for carbonaceous "graphite" grains (Eq. 4) from Weingartner & Draine (2001)
+
+
+    Inputs:
+    -----
+    a: float
+    Value of the grain size in cm
+
+    B1: float
+    Result from Bi_carb(a01, bc1)
+
+    B2: float
+    Result from Bi_carb(a02, bc2)
+
+    NOTE: constants Cg, alphag, betag, cutoff grain size (atg), and control size (acg) are set in separate file dustconst.py.
+
+
+    Outputs:
+    -----
+    Number of grains for a particular size (units 1/cm)
+    """
+
+    # (4) = D(a) + dist1 * [1 or dist2]
+    # calculate the first term, dist1
+    dist1 = ((dc.Cs/a)*(a/dc.ats)**dc.alphas * F(a, dc.betas, dc.ats))
+
+    # determine which additional term to use based on grain size
+    # if a < 3.5e-8, the function is undefined so return 0
+    if a.value < 3.5e-8:
+        return 0
+    # if 3.5e-8 <= a < atg, return the result of Da_carb(a, B1, B2) + dist1 * 1
+    elif a.value >= 3.5e-8 and a < dc.ats:
+        return dist1
+    # if a > atg, return the result of Da_carb(a, B1, B2) + (dist1*dist2)
+    else:
+        dist2 = np.exp(-((a - dc.ats)/dc.acs)**3)
+        return dist1 * dist2

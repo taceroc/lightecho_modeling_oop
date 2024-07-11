@@ -6,4 +6,5 @@
 "size_cube": [1, 1],
 "plane_coefficients": [-0.9, 0.0, 100.0, 100.0], 
 "know_3d_dust_position": 0,
-"dust_position" : [1, 1, 0]}
+"dust_position" : [1, 1, 0],
+"wave": 7.499E-01}

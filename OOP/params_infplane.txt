@@ -3,4 +3,5 @@
 "d": 16000,
 "Flmax": 1e16,
 "dz0": 0.02,
-"plane_coefficients": [0.2, 0, 1, 1]}
+"plane_coefficients": [0.2, 0, 1, 1],
+"wave": 7.499E-01}

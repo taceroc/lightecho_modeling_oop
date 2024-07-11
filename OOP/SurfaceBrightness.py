@@ -11,7 +11,7 @@ import calculate_scattering_function as csf
 
 
 class SurfaceBrightness:
-    def __init__(self, source, LE, lc=None):
+    def __init__(self, wavel, source, LE, lc=None):
         """
         Calculate the surface brightness at a position r = (x_inter, y_inter, z_inter):
         Sugermann 2003 equation 7:
@@ -28,6 +28,7 @@ class SurfaceBrightness:
             f(a): dust distribution [1/lenght]
             S: scattering integral [lenght^2]
         """
+        self.wavel = wavel
         self.Fl = source.Flmax
         self.dt0 = source.dt0
         self.d = source.d
@@ -98,10 +99,22 @@ class SurfaceBrightness:
             flux_upto = 10**((-48.6 - mag_upto) / 2.5)
                 
             self.Fl.append(integrate.simpson(flux_upto, time_up))
+        
+    def load_dust_values(self):
+        sizeg, waveg, Qcarb, gcarb, Qsili, gsili= csf.load_data()
+        # Calculate the scattering integral and the surface brightness
+        (sizes, Qc_scs, gc_s, carbon_distribution, 
+         Qs_scs, gs_s, silicone_distribution) = csf.calculate_scattering_function_values(
+            self.wavel, sizeg, waveg, Qcarb, gcarb, Qsili, gsili
+        )
+
+        return (sizes, Qc_scs, gc_s, carbon_distribution, 
+                Qs_scs, gs_s, silicone_distribution)
+    
 
 class SurfaceBrightnessAnalytical(SurfaceBrightness):
-    def __init__(self, source, LE, xyz_intersection):
-        super().__init__(source, LE)
+    def __init__(self, wavel, source, LE, xyz_intersection):
+        super().__init__(wavel, source, LE)
         self.x_inter_values = xyz_intersection[0]
         self.y_inter_values = xyz_intersection[1]
         self.z_inter_values = xyz_intersection[2]
@@ -150,17 +163,15 @@ class SurfaceBrightnessAnalytical(SurfaceBrightness):
             + self.y_inter_values**2
             + self.z_inter_values * (self.z_inter_values - self.d)
         ) / (r * ll)
-        sizeg, waveg, Qcarb, gcarb = csf.load_data()
-        # Calculate the scattering integral and the surface brightness
         S = np.zeros(len(r))
-        Qscs, gs, sizes, carbon_distribution = csf.calculate_scattering_function_values(
-            sizeg, waveg, dc.wavel, Qcarb, gcarb
-        )
-
+        (sizes, Qc_scs, gc_s, carbon_distribution, 
+         Qs_scs, gs_s, silicone_distribution) = super().load_dust_values()
         for ik, rm in enumerate(self.cossigma):
             if (rm >= -1) and (rm <= 1):
                 ds, Scm = csf.main(
-                    rm, Qscs, gs, sizes, carbon_distribution
+                    rm, sizes, 
+                    Qc_scs, gc_s, carbon_distribution, 
+                    Qs_scs, gs_s, silicone_distribution
                 )  # 1.259E+00 in um
                 S[ik] = (Scm[0][0] * fc.pctoly**2) / (
                     100 * fc.pctom
@@ -177,8 +188,8 @@ class SurfaceBrightnessAnalytical(SurfaceBrightness):
 
 
 class SurfaceBrightnessBulb(SurfaceBrightness):
-    def __init__(self, source, LE, xy_matrix, z_matrix):
-        super().__init__(source, LE)
+    def __init__(self, wavel, source, LE, xy_matrix, z_matrix):
+        super().__init__(wavel, source, LE)
         self.xy_matrix = xy_matrix
         self.z_matrix = z_matrix
         self.size_x = LE.size_x
@@ -207,12 +218,10 @@ class SurfaceBrightnessBulb(SurfaceBrightness):
 
         self.sb_true_matrix = np.zeros((self.size_y, self.size_x))
 
-        sizeg, waveg, Qcarb, gcarb = csf.load_data()
         # Calculate the scattering integral and the surface brightness
         S = np.zeros((self.size_y, self.size_x))
-        Qscs, gs, sizes, carbon_distribution = csf.calculate_scattering_function_values(
-            sizeg, waveg, dc.wavel, Qcarb, gcarb
-        )
+        (sizes, Qc_scs, gc_s, carbon_distribution, 
+         Qs_scs, gs_s, silicone_distribution) = super().load_dust_values()
 
         for i in range(self.size_x):
             for j in range(self.size_y):
@@ -228,8 +237,10 @@ class SurfaceBrightnessBulb(SurfaceBrightness):
                 cossigmam = np.mean(cossigma)
                 if (cossigmam >= -1) and (cossigmam <= 1):
                     ds, Scm = csf.main(
-                        cossigmam, Qscs, gs, sizes, carbon_distribution
-                    )  # 1.259E+00 in um
+                        cossigmam, sizes, 
+                        Qc_scs, gc_s, carbon_distribution, 
+                        Qs_scs, gs_s, silicone_distribution
+                        )   # 1.259E+00 in um
                     S[j, i] = (Scm[0][0] * fc.pctoly**2) / (
                         100 * fc.pctom
                     ) ** 2  # conver to ly
@@ -250,8 +261,8 @@ class SurfaceBrightnessBulb(SurfaceBrightness):
 
 class SurfaceBrightnessDustSheetPlane(SurfaceBrightness):
 
-    def __init__(self, source, LE, sheetdust, xy_matrix):
-        super().__init__(source, LE)
+    def __init__(self, wavel, source, LE, sheetdust, xy_matrix):
+        super().__init__(wavel, source, LE)
         self.xy_matrix = xy_matrix
         self.size_x = sheetdust.side_x
         self.size_y = sheetdust.side_y
@@ -279,12 +290,10 @@ class SurfaceBrightnessDustSheetPlane(SurfaceBrightness):
 
         self.sb_true_matrix = np.zeros((self.size_y, self.size_x))
 
-        sizeg, waveg, Qcarb, gcarb = csf.load_data()
         # Calculate the scattering integral and the surface brightness
         S = np.zeros((self.size_y, self.size_x))
-        Qscs, gs, sizes, carbon_distribution = csf.calculate_scattering_function_values(
-            sizeg, waveg, dc.wavel, Qcarb, gcarb
-        )
+        (sizes, Qc_scs, gc_s, carbon_distribution, 
+         Qs_scs, gs_s, silicone_distribution) = super().load_dust_values()
 
         for i in range(self.size_x):
             for j in range(self.size_y):
@@ -299,7 +308,9 @@ class SurfaceBrightnessDustSheetPlane(SurfaceBrightness):
                 cossigmam = np.mean(cossigma)
                 if (cossigmam >= -1) and (cossigmam <= 1):
                     ds, Scm = csf.main(
-                        cossigmam, Qscs, gs, sizes, carbon_distribution
+                        cossigmam, sizes, 
+                        Qc_scs, gc_s, carbon_distribution, 
+                        Qs_scs, gs_s, silicone_distribution
                     )  # 1.259E+00 in um
                     S[j, i] = (Scm[0][0] * fc.pctoly**2) / (
                         100 * fc.pctom

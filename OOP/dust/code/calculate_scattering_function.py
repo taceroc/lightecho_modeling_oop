@@ -16,23 +16,30 @@ import scattering_function as sf
 import size_dist as sd
 
 
-def calculate_scattering_function_values(sizeg, waveg, wave, Qcarb, gcarb):
+def calculate_scattering_function_values(wave, sizeg, waveg, Qcarb, gcarb,
+                                        Qsili, gsili):
     B1 = sd.Bi_carb(dc.a01, dc.bc1)
     # calculate B2
     B2 = sd.Bi_carb(dc.a02, dc.bc2)
     carbon_distribution = [sd.Dist_carb(idx, B1, B2).value for idx in 1e-4*sizeg*u.cm] #in cm
+    silicone_distribution = [sd.Dist_sili(idx).value for idx in 1e-4*sizeg*u.cm] #in cm
     
-    Qscs, gs, sizes, carbon_distribution = sf.dS_pre(sizeg, waveg, wave, Qcarb, gcarb, carbon_distribution)
-    return Qscs, gs, sizes, carbon_distribution
+    Qc_scs, gc_s, sizes, carbon_distribution = sf.dS_pre(sizeg, waveg, wave, Qcarb, gcarb, carbon_distribution)
+    Qs_scs, gs_s, sizes, silicone_distribution = sf.dS_pre(sizeg, waveg, wave, Qsili, gsili, silicone_distribution)
 
-def calculate_scattering_function(mu, Qscs, gs, sizes, carbon_distribution):
+    return  sizes, Qc_scs, gc_s, carbon_distribution, Qs_scs, gs_s, silicone_distribution
+
+def calculate_scattering_function(mu, sizes, Qc_scs, gc_s, carbon_distribution,
+                                  Qs_scs, gs_s, silicone_distribution):
 
     # Qscs, gs, sizes, carbon_distribution = calculate_scattering_function_values(mu, sizeg, waveg, wave, Qcarb, gcarb)
     
-    ds = sf.dS(mu, Qscs, gs, sizes, carbon_distribution)
-    S = sf.S(ds, sizes)
+    ds_c = sf.dS(mu, Qc_scs, gc_s, sizes, carbon_distribution)
+    S_c = sf.S(ds_c, sizes)
 
-    return ds, S
+    ds_s = sf.dS(mu, Qs_scs, gs_s, sizes, silicone_distribution)
+    S_s = sf.S(ds_s, sizes)
+    return ds_c+ds_s, S_c+S_s
 
 def load_data():
     # path_dustdata = '/content/drive/MyDrive/LE2023/dust/data/'
@@ -51,7 +58,10 @@ def load_data():
 
     # silicate dust
     siliconQ = path_dustdata+r'\\dustmodels_WD01\\suvSil_81.dat'
-    Qsil = np.loadtxt(siliconQ, usecols=(2), unpack=True)
+    # Qsil = np.loadtxt(siliconQ, usecols=(2), unpack=True)
+    Qsili_sca = np.loadtxt(siliconQ, usecols=(2), unpack=True)
+    Qsili_abs = np.loadtxt(siliconQ, usecols=(1), unpack=True)
+    Qsili = Qsili_sca / (Qsili_sca + Qsili_abs)
 
     # older models used for g (degree of forward scattering) values
     # carbonaceous dust
@@ -59,15 +69,16 @@ def load_data():
     gcarb = np.loadtxt(carbong, usecols=(3), unpack=True)
     # silicate dust
     silicong = path_dustdata+r'\\dustmodels_WD01\\suvSil_81.dat'
-    gsil = np.loadtxt(silicong, usecols=(3), unpack=True)
+    gsili = np.loadtxt(silicong, usecols=(3), unpack=True)
 
-    return sizeg, waveg, Qcarb, gcarb
+    return sizeg, waveg, Qcarb, gcarb, Qsili, gsili
 
 
-def main(mu, Qscs, gs, sizes, carbon_distribution):
+def main(mu, sizes, Qc_scs, gc_s, carbon_distribution, Qs_scs, gs_s, silicone_distribution):
     # sizeg, waveg, Qcarb, gcarb = load_data
 
-    ds, S = calculate_scattering_function(mu, Qscs, gs, sizes, carbon_distribution)
+    ds, S = calculate_scattering_function(mu, sizes, Qc_scs, gc_s, carbon_distribution,
+                                  Qs_scs, gs_s, silicone_distribution)
 
     return ds, S
 

@@ -19,21 +19,13 @@ sys.path.append(CONFIG_PATH_UTILS)
 import utils as utils
 
 
-def plane(dz0, ct, dt0, params, source1, save=False, show_plots=False):
+def plane(wavel, dz0, ct, dt0, params, source1, save=False, show_plots=False):
 
 
     plane1 = InfPlane(params, dz0)
     LE_plane1source1 = LE.LEPlane(ct, plane1, source1)
     x_inter_values, y_inter_values, z_inter_values, new_xs, new_ys = LE_plane1source1.run()
-    def process_list(my_list):
-        if len(my_list) == 0:
-            raise ValueError("The list is empty. Cannot continue.")
-        print("Processing the list:", my_list)
-    try:
-        process_list(x_inter_values)
-    except ValueError as e:
-        print(e)
-    sb_plane = sb.SurfaceBrightnessAnalytical(source1, LE_plane1source1, [x_inter_values, y_inter_values, z_inter_values])
+    sb_plane = sb.SurfaceBrightnessAnalytical(wavel, source1, LE_plane1source1, [x_inter_values, y_inter_values, z_inter_values])
     ######
     mu = 6
     variance = 800
@@ -117,6 +109,6 @@ def run(file_name, args):
     bool_save = args[0]
     bool_show_plots = args[1]
 
-
+    wavel = parameters['wave']
     source1 = Source(dt0, d, Flmax)
-    plane(dz0, ct, dt0, [a, ay, az, -z0ly], source1, save=bool_save, show_plots=bool_show_plots)
+    plane(wavel, dz0, ct, dt0, [a, ay, az, -z0ly], source1, save=bool_save, show_plots=bool_show_plots)

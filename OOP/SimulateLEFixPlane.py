@@ -21,7 +21,7 @@ sys.path.append(CONFIG_PATH_UTILS)
 import utils as utils
 
 
-def plane_dust(dz0, ct, dt0, dust_position, size_cube, params, source1, save=False, show_plots=False, show_initial_object=True):
+def plane_dust(wavel, dz0, ct, dt0, dust_position, size_cube, params, source1, save=False, show_plots=False, show_initial_object=True):
     img = gcd.generate_cube_dust() #generate_cube_dust_random()
     sheet_dust_img = np.sum(img.copy(), axis=-1)
 
@@ -36,7 +36,7 @@ def plane_dust(dz0, ct, dt0, dust_position, size_cube, params, source1, save=Fal
     if show_initial_object:
         LE_planedust1source1.plot_sheetdust()
 
-    cossigma, surface_total = sb.SurfaceBrightnessDustSheetPlane(source1, 
+    cossigma, surface_total = sb.SurfaceBrightnessDustSheetPlane(wavel, source1, 
                                                                  LE_planedust1source1,
                                                                  planedust1, 
                                                                  xy_matrix).calculate_surface_brightness()
@@ -185,7 +185,11 @@ def run(file_name, args):
     bool_show_plots = args[1]
     bool_show_initial_object = args[2]
 
+    wavel = parameters['wave'] #in um
+
     
 
     source1 = Source(dt0, d, Flmax)
-    plane_dust(dz0, ct, dt0, dust_position, size_cube, params, source1, save=bool_save, show_plots=bool_show_plots, show_initial_object=bool_show_initial_object)
+    plane_dust(wavel, dz0, ct, dt0, dust_position, size_cube, 
+               params, source1, save=bool_save, 
+               show_plots=bool_show_plots, show_initial_object=bool_show_initial_object)
