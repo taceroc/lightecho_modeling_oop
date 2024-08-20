@@ -7,7 +7,9 @@ from scipy.special import erf
 from scipy import integrate
 
 import sys
-sys.path.append(r"C:\\Users\\tac19\\OneDrive\\Documents\\UDEL\\Project_RA\\LE\\Simulation\\code\\dust\\code")
+# sys.path.append(r"C:\\Users\\tac19\\OneDrive\\Documents\\UDEL\\Project_RA\\LE\\Simulation\\code\\dust\\code")
+
+sys.path.append(r"C:\\Users\\tac19\\OneDrive\\Documents\\UDEL\\Project_RA\\LE\\lightecho_modeling_oop\\OOP\\dust\\code")
 
 import var_constants as vc
 import dust_constants as dc
@@ -43,7 +45,8 @@ def calculate_scattering_function(mu, sizes, Qc_scs, gc_s, carbon_distribution,
 
 def load_data():
     # path_dustdata = '/content/drive/MyDrive/LE2023/dust/data/'
-    path_dustdata = r"C:\\Users\\tac19\\OneDrive\\Documents\\UDEL\\Project_RA\\LE\\Simulation\\code\\dust\\data"
+    # path_dustdata = r"C:\\Users\\tac19\\OneDrive\\Documents\\UDEL\\Project_RA\\LE\\Simulation\\code\\dust\\data"
+    path_dustdata = r"C:\\Users\\tac19\\OneDrive\\Documents\\UDEL\\Project_RA\\LE\\lightecho_modeling_oop\\OOP\\dust\\data"
     # pull out available wavelengths for g values, convert to cm from um, and take the 
     waveg = np.loadtxt(path_dustdata+r'\\dustmodels_WD01\\LD93_wave.dat', unpack=True) #micronm
     # pull out available sizes for the g values, convert to cm from um, and take the log
@@ -65,11 +68,11 @@ def load_data():
 
     # older models used for g (degree of forward scattering) values
     # carbonaceous dust
-    carbong = path_dustdata+r'\\dustmodels_WD01\\Gra_81.dat'
-    gcarb = np.loadtxt(carbong, usecols=(3), unpack=True)
+    # carbong = path_dustdata+r'\\dustmodels_WD01\\Gra_81.dat'
+    gcarb = np.loadtxt(carbonQ, usecols=(3), unpack=True)
     # silicate dust
-    silicong = path_dustdata+r'\\dustmodels_WD01\\suvSil_81.dat'
-    gsili = np.loadtxt(silicong, usecols=(3), unpack=True)
+    # silicong = path_dustdata+r'\\dustmodels_WD01\\suvSil_81.dat'
+    gsili = np.loadtxt(siliconQ, usecols=(3), unpack=True)
 
     return sizeg, waveg, Qcarb, gcarb, Qsili, gsili
 

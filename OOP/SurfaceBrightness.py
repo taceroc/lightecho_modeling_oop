@@ -96,7 +96,7 @@ class SurfaceBrightness:
             # print(self.lc['time']<=t_tildi)
             time_up = self.lc['time'][self.lc['time']<=self.t_tilde[it]+self.d]
             mag_upto = self.lc['mag'][self.lc['time']<=self.t_tilde[it]+self.d]
-            flux_upto = 10**((-48.6 - mag_upto) / 2.5)
+            flux_upto = 10**((-48.6 - mag_upto) / 2.5) # AB mag units of erg s−1 cm−2 Hz−1
                 
             self.Fl.append(integrate.simpson(flux_upto, time_up))
         
@@ -146,7 +146,7 @@ class SurfaceBrightnessAnalytical(SurfaceBrightness):
             Ir = Ir * 1.25 * Fl * 0.5 * self.dt0 * fc.n_H * fc.c
         else:
             super().light_curve_integral()
-            Fl = np.array(self.Fl) * (fc.ytos**3)  # kg,ly,y
+            Fl = np.array(self.Fl) * (fc.ytos**2) * (1/1000)  # kg,ly,y
             Ir = Fl * fc.n_H * fc.c
 
         self.sb_true_matrix = np.zeros(len(r))
@@ -173,9 +173,7 @@ class SurfaceBrightnessAnalytical(SurfaceBrightness):
                     Qc_scs, gc_s, carbon_distribution, 
                     Qs_scs, gs_s, silicone_distribution
                 )  # 1.259E+00 in um
-                S[ik] = (Scm[0][0] * fc.pctoly**2) / (
-                    100 * fc.pctom
-                ) ** 2  # conver to ly
+                S[ik] = (Scm[0][0] * fc.pctoly**2) / (100 * fc.pctom) #** 2  # conver to ly
             else:
                 S[ik] = 0
                 # print("no cosi")

@@ -2,7 +2,7 @@ import numpy as np
 
 from astropy import units as u
 from scipy.special import erf
-from scipy import integrate
+from scipy import integrate, interpolate
 
 import sys
 sys.path.append(r"C:\\Users\\tac19\\OneDrive\\Documents\\UDEL\\Project_RA\\LE\\Simulation\\code\\dust\\code")
@@ -116,18 +116,46 @@ def dS_pre(sizeg, waveg, wave, Qcarb, gcarb, distribution):
         g = gcarb[ids]
         # phi = Phi(mu, g)
         #carbon_distribtion
-        f = distribution[idx]
+        # f = distribution[idx]
         Qscs.append(Qsc)
         sizes.append(sizeg[idx])
         dist.append(distribution[idx])
         gs.append(g)
         # ds.append((Qsc * np.pi*(1e-4*sizeg[idx])**2 * phi * f)) #in cm
 
-    return Qscs, g, sizes, dist
+    return Qscs, gs, sizes, dist
+
+
+def dS_pre_interpolation(sizeg, waveg, wave, Qcarb, gcarb, distribution):
+    Qscs, sizes, dist, gs = [], [], [], []
+    # wave = 6.310E+02
+    # for idy in range(0,len(waveg)):
+    #     if waveg[idy] == wave:
+    #         indy = idy
+    # iterate over the array of points to search for matching (wave, a) point
+    # for m in mu:
+    for idx in range(0,len(sizeg)):
+        # if the first value of the current point matches wave and if the second value matches a
+        # return the corresponding Qsc value
+        ids = len(waveg) * idx #+ len(waveg)
+        Qsc_all = []
+        g_all = []
+        for i in range(ids, ids+len(waveg))[::-1]:
+            Qsc_all.append(Qcarb[i])
+            g_all.append(gcarb[i])
+        spl = interpolate.make_interp_spline(np.array(waveg)[::-1], np.c_[np.array(Qsc_all), np.array(g_all)])
+        Qsc, g = spl(wave).T
+        Qscs.append(Qsc)
+        sizes.append(sizeg[idx])
+        dist.append(distribution[idx])
+        gs.append(g)
+        # ds.append((Qsc * np.pi*(1e-4*sizeg[idx])**2 * phi * f)) #in cm
+
+    return Qscs, gs, sizes, dist
 
 def dS(mu, Qsc, g, sizes, f):
     ds = []
-    phi = Phi(mu, g)
+    phi = Phi(mu, np.array(g))
     # wave = 6.310E+02
 
     ds.append((np.array(Qsc) * np.pi*(1e-4*np.array(sizes))**2 * np.array(phi) * np.array(f))) #in cm
