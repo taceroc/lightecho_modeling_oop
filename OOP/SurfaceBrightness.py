@@ -56,12 +56,8 @@ class SurfaceBrightness:
         """
         self.rhos = np.sqrt(self.x_inter_values**2 + self.y_inter_values**2)#np.sqrt(2 * self.z_inter_values * self.ct + (self.ct) ** 2)
         self.half_obs_thickness = (
-            np.sqrt(
-                (self.ct / self.rhos) ** 2 * self.dz0**2
-                + ((self.rhos * fc.c / (2 * self.ct)) + (fc.c * self.ct / (2 * self.rhos))) ** 2
-                * self.dt0**2
-            )
-            / 2
+            np.sqrt((self.ct / self.rhos) ** 2 * self.dz0**2
+                + ((self.rhos * fc.c / (2 * self.ct)) + (fc.c * self.ct / (2 * self.rhos))) ** 2 * self.dt0**2)/ 2
         )
         self.rhodrho = self.rhos * self.half_obs_thickness
         # return self.rhodrho, self.rhos, half_obs_thickness
