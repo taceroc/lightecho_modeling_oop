@@ -142,6 +142,7 @@ def old():
             np.save(pathg+"\\x_inter_arcsec"+n_speci+".npy", le_img.new_xs)
             np.save(pathg+"\\y_inter_arcsec"+n_speci+".npy", le_img.new_ys)
             np.save(pathg+"\\surface_"+n_speci+".npy", surface)
+            np.save(pathg+"\\surface_values"+n_speci+".npy", surface_val)
             np.save(pathg+"\\surface_img"+n_speci+".npy", surface_img)
 
             # -- save the intersection points in xyz system in ly

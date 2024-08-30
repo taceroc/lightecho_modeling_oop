@@ -2,6 +2,7 @@ import sys
 import numpy as np
 import matplotlib.pyplot as plt
 import pickle
+import json
 import scipy.stats as stats
 from definitions import CONFIG_PATH_DUST, PATH_TO_DUST_IMG_CODE, CONFIG_PATH_UTILS, PATH_TO_RESULTS_SIMULATIONS, PATH_TO_RESULTS_FIGURES, CUBE_NAME
 sys.path.append(PATH_TO_DUST_IMG_CODE)
@@ -22,13 +23,35 @@ import utils as utils
 
 
 def plane_dust(wavel, dz0, ct, dt0, dust_position, size_cube, params, source1, save=False, show_plots=False, show_initial_object=True):
+    """
+        Calculate the LE, the LE image and surface brightness
+
+        Arguments:
+            wavel: wavelenght of observation
+            dz0: thickness of the dust in ly, given by user in in the txt containing arguments: parameters['dz0'] in pc
+            ct: LE time of observation in years after max of source, given by user in in the txt containing arguments: parameters['ct'] in days
+            dt0: duration of source in years, given by user in in the txt containing arguments: parameters['dt0'] in days
+            dust_position: x0, y0, z0 center position of dust flat-cube (e.g. img of SPITZER etacar data) in ly given by user in the txt containing arguments: parameters['dust_position'] in pc
+            size_cube: size_cube: size (x,y) of the dust flat-cube in ly, given by user in the txt containing arguments: parameters['size_cube'] in pc
+            params: parameter of equation of a plane Ax + By + Dz + F = 0 
+                given by user in parameters['plane_coefficients'] or calculate in know_3d_dust_position
+            source1: Source object
+            save: save results, images, plot and txt with LE params
+            show_plots: show plots at the end of simulation
+            show_initial_object: show geometrical configuration, dust, plane, paraboloid ct
+
+        Returns:
+            Plots
+    """
+    # load and reshape and boolean batch/stamp of SPITZER data: it must exists already in npy format
     img = gcd.generate_cube_dust() #generate_cube_dust_random()
     sheet_dust_img = np.sum(img.copy(), axis=-1)
 
     dust_shape = np.array(sheet_dust_img.shape)
+    # Initiliaze DustShape object 
     planedust1 = PlaneDust(params, dz0, dust_shape, dust_position, size_cube )
 
- 
+    # Calculate LE object
     LE_planedust1source1 = LE.LESheetDust(ct, planedust1, source1, sheet_dust_img)
     x_inter_values, y_inter_values, z_inter_values, xy_matrix = LE_planedust1source1.run(show_initial_object=show_initial_object)
 
@@ -36,12 +59,13 @@ def plane_dust(wavel, dz0, ct, dt0, dust_position, size_cube, params, source1, s
     if show_initial_object:
         LE_planedust1source1.plot_sheetdust()
 
+    # Calculate surface brightness
     cossigma, surface_total = sb.SurfaceBrightnessDustSheetPlane(wavel, source1, 
                                                                  LE_planedust1source1,
                                                                  planedust1, 
                                                                  xy_matrix).calculate_surface_brightness()
 
-
+    # Initialize and calculate the LE image from LE and surface brightness
     le_img = LEImageNonAnalytical(LE_planedust1source1, 
                                   planedust1, 
                                   surface_total, 
@@ -49,12 +73,9 @@ def plane_dust(wavel, dz0, ct, dt0, dust_position, size_cube, params, source1, s
                                   cmap = 'magma_r')
     surface_val, surface_img, x_img, y_img = le_img.create_le_surface()
 
-
+    # name of the files
     n_speci = f"planedust_{CUBE_NAME}_dt0_{int(dt0 / fc.dtoy)}_ct{int(ct / fc.dtoy)}_c{dust_position}_size{size_cube}{dust_shape}dz0{round(dz0 / fc.pctoly, 2)}"
 
-    
- 
-    
 
     fig, ax = plt.subplots(1,1, figsize = (8,8))
     ax.imshow(surface_img, origin = "lower")
@@ -81,6 +102,8 @@ def plane_dust(wavel, dz0, ct, dt0, dust_position, size_cube, params, source1, s
         np.save(pathg+"\\y_inter_arcsec"+n_speci+".npy", le_img.new_ys)
         np.save(pathg+"\\xy_matrix"+n_speci+".npy", xy_matrix)
         np.save(pathg+"\\surface_"+n_speci+".npy", surface_img)
+        np.save(pathg+"\\surface_values"+n_speci+".npy", surface_val)
+
 
         # -- save the intersection points in xyz system in ly
         np.save(pathg+"\\x_inter_ly"+n_speci+".npy", x_inter_values)
@@ -104,6 +127,17 @@ def plane_dust(wavel, dz0, ct, dt0, dust_position, size_cube, params, source1, s
     # z0 = (-params[-1] - params[0]*x0 - params[1]*y0) / params[2]
 
 def know_3d_dust_position(x0, y0, z0, size_cube):
+    """
+        Given the center position (x0, y0, z0) of the dust flat-cube that user have information, e.g. the image-batch of SPITZER etacar data.
+        Calculate 4 points inside the cube (size_cube) and fit the equation of a plane to the points.
+
+        Arguments:
+            x0, y0, z0: center position of dust flat-cube (e.g. img of SPITZER etacar data) given by user in the txt containing arguments: parameters['dust_position'] in pc
+            size_cube: size (x,y) of the dust flat-cube in pc, given by user in the txt containing arguments: parameters['size_cube']
+        Returns:
+            Params: parameters of equation of a plane Ax + By + Dz + F = 0
+    """
+
     from scipy.optimize import leastsq
     # x0 = 1 * fc.pctoly
     # y0 = 3 * fc.pctoly
@@ -153,7 +187,22 @@ def know_3d_dust_position(x0, y0, z0, size_cube):
     return params
 
 def run(file_name, args):
-    import json
+    """
+        Read txt containing a dict with the mandatory parameters for each type simulation. 
+        Two options here: 
+            parameters['know_3d_dust_position'] = False:
+                no information about the z/depth position of the dust -> user needs to define equation of a plane in the txt file parameters['plane_coefficients']
+            parameters['know_3d_dust_position'] = True:
+                information about the z/depth position of the dust -> call know_3d_dust_position() and determine equation of the plane
+
+        Initiliaze the Source object.
+        Call func to initilize LE calculation.
+
+        Arguments:
+            file_name = args: ins.txtparameters
+            args: ins.bool_save, ins.bool_show_plots, ins.bool_show_initial_object
+
+    """
     with open(file_name, 'rb') as handle:
         parameters = json.load(handle)
     dt0 =  parameters['dt0'] * fc.dtoy #years

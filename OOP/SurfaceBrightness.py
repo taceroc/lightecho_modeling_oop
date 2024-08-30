@@ -17,7 +17,7 @@ class SurfaceBrightness:
         Sugermann 2003 equation 7:
             SB(lambda, t) = F(lambda)nH(r) * (c dz0 / (4 pi r rhodrho) )* S(lambda, mu)
             S(lambda, mu) = \int Q(lamdda, a) sigma Phi(mu, lambda, a) f(a) da
-            lambda: given wavelength in micrometer [lenght]
+            lambda: given wavelength in micrometer [1/lenght]
             dz0: dust thickness [lenght]
             r: position dust [lenght]
             rhodrho: x-y of LE [lenght^2]
@@ -27,6 +27,8 @@ class SurfaceBrightness:
             Phi: scattering function
             f(a): dust distribution [1/lenght]
             S: scattering integral [lenght^2]
+
+            Return units [mass / (time^2 lenght^3)] >> [flux / lenght^3]
         """
         self.wavel = wavel
         self.Fl = source.Flmax
@@ -76,7 +78,7 @@ class SurfaceBrightness:
             Return:
                 Flux at wavelenght lambda
         """
-        self.Fl = []
+        self.Fl = [] # it stores the flux for each x,y,z, that gives a differnte LC time
         self.rhos_half()
         # self.lc['time'] = self.lc['time'] * fc.dtoy
         # t_tilde =  self.ct - (np.sqrt(self.rhos**2 + self.z_inter_values**2) / fc.c) - (np.abs(self.z_inter_values) / fc.c)
@@ -85,10 +87,14 @@ class SurfaceBrightness:
                         np.linalg.norm([self.x_inter_values, self.y_inter_values, self.z_inter_values], axis=0) -
                         np.linalg.norm([self.x_inter_values, self.y_inter_values, (self.d - self.z_inter_values)], axis=0))
         # print((self.d+self.t_tilde)/fc.dtoy)
+        print("ttilde", self.d)
+        # print(self.t_tilde)
         # add +d/c because the zero of your data is when detecting 1st light
         for it, t_tildi in enumerate(self.t_tilde):
             if self.t_tilde[it]+self.d < 0:
-                self.t_tilde[it] = -self.d     
+                print('neg', self.d)
+                self.t_tilde[it] = -self.d 
+            # print(self.t_tilde[it]+self.d)    
             # print(self.lc['time']<=t_tildi)
             time_up = self.lc['time'][self.lc['time']<=self.t_tilde[it]+self.d]
             mag_upto = self.lc['mag'][self.lc['time']<=self.t_tilde[it]+self.d]
@@ -124,7 +130,7 @@ class SurfaceBrightnessAnalytical(SurfaceBrightness):
             ct: time where the LE is observed in y
 
         Return
-            Surface brightness in units of kg/ly^3 [erg/(s cm4)]
+            Surface brightness in units of kg/(ly^2 y^2) ###kg/ly^3 [erg/(s cm4)]
             cos(scatter angle)
         """
 
@@ -142,8 +148,10 @@ class SurfaceBrightnessAnalytical(SurfaceBrightness):
             Ir = Ir * 1.25 * Fl * 0.5 * self.dt0 * fc.n_H * fc.c
         else:
             super().light_curve_integral()
-            Fl = np.array(self.Fl) * (fc.ytos**2) * (1/1000)  # kg,ly,y
-            Ir = Fl * fc.n_H * fc.c
+            Fl = np.array(self.Fl) * (fc.ytos**2)  # kg,ly,y
+            # print(self.Fl)
+            Ir = Fl * fc.n_H #* fc.c
+            # print(Ir)
 
         self.sb_true_matrix = np.zeros(len(r))
         # rhodrho, rhos, half_obs_thickness = super().rhos_half()
@@ -169,14 +177,16 @@ class SurfaceBrightnessAnalytical(SurfaceBrightness):
                     Qc_scs, gc_s, carbon_distribution, 
                     Qs_scs, gs_s, silicone_distribution
                 )  # 1.259E+00 in um
-                S[ik] = (Scm[0][0] * fc.pctoly**2) / (100 * fc.pctom) #** 2  # conver to ly
+                # S[ik] = (Scm[0][0] / fc.pctoly**2) * ((100 * fc.pctom) ** 2 ) # conver to ly
+                S[ik] = (Scm[0][0] * fc.pctoly**2) / ((100 * fc.pctom) ** 2 )
             else:
                 S[ik] = 0
                 # print("no cosi")
             Inte_z = self.dz0
             self.sb_true_matrix[ik] = (
-                Ir[ik] * S[ik] * Inte_z / (4 * np.pi * r[ik] * self.rhodrho[ik])
-            )
+                Ir[ik] * S[ik] * Inte_z / (4 * np.pi * r[ik]**2)
+            )  
+            # print(S[ik])
 
         return self.cossigma, self.sb_true_matrix
 
@@ -198,7 +208,7 @@ class SurfaceBrightnessBulb(SurfaceBrightness):
             ct: time where the LE is observed in y
 
         Return
-            Surface brightness in units of kg/ly^3 [erg/(s cm4)]
+            Surface brightness in units of kg/(ly^2 y^2) ##kg/ly^3 [erg/(s cm4)]
             cos(scatter angle)
         """
 
@@ -270,14 +280,27 @@ class SurfaceBrightnessDustSheetPlane(SurfaceBrightness):
             ct: time where the LE is observed in y
 
         Return
-            Surface brightness in units of kg/ly^3 [erg/(s cm4)]
+            Surface brightness in units of kg/(ly^2 y^2) ##kg/ly^3 [erg/(s cm4)]
             cos(scatter angle)
         """
 
         # Sugerman 2003 after eq 15 F(lambda) = 1.25*F(lambda, tmax)*0.5*dt0
         # F 1.08e-14 # watts / m2
-        Fl = self.Fl * (fc.ytos**3)  # kg,ly,y
-        Ir = 1.25 * Fl * 0.5 * self.dt0 * fc.n_H * fc.c
+
+        # Ir = np.ones(len(r))
+        if self.lc == None:
+            # self.rhos_half()
+            Fl = self.Fl * (fc.ytos**3)  # kg,ly,y
+            Ir = Fl * 1.25 * Fl * 0.5 * self.dt0 * fc.n_H * fc.c
+        else:
+            super().light_curve_integral()
+            Fl = np.array(self.Fl) * (fc.ytos**2)  # kg,ly,y
+            # print(self.Fl)
+            Ir = Fl * fc.n_H #* fc.c
+
+
+        # Fl = self.Fl * (fc.ytos**3)  # kg,ly,y #Fl = np.array(self.Fl) * (fc.ytos**2) * (1/1000)
+        # Ir = 1.25 * Fl * 0.5 * self.dt0 * fc.n_H * fc.c
 
         # calculate r, source-dust
         r_le = np.sqrt(self.r_le2)
@@ -297,7 +320,7 @@ class SurfaceBrightnessDustSheetPlane(SurfaceBrightness):
                 ll = np.sqrt(self.x_inter_values**2 + self.y_inter_values**2 + (self.z_inter_values - self.d) ** 2)
                 r = np.sqrt(self.x_inter_values**2 + self.y_inter_values**2 + self.z_inter_values**2)
                 cossigma = (self.x_inter_values**2 + self.y_inter_values**2 + self.z_inter_values * (self.z_inter_values - self.d)) / (r * ll)
-                super().rhos_half()
+                # super().rhos_half()
                 # print(r*ll)
                 cossigmam = np.mean(cossigma)
                 if (cossigmam >= -1) and (cossigmam <= 1):
@@ -306,9 +329,7 @@ class SurfaceBrightnessDustSheetPlane(SurfaceBrightness):
                         Qc_scs, gc_s, carbon_distribution, 
                         Qs_scs, gs_s, silicone_distribution
                     )  # 1.259E+00 in um
-                    S[j, i] = (Scm[0][0] * fc.pctoly**2) / (
-                        100 * fc.pctom
-                    ) ** 2  # conver to ly
+                    S[j, i] = (Scm[0][0] * fc.pctoly**2) / ((100 * fc.pctom) ** 2)  # conver to ly
                 else:
                     S[j, i] = 0
                     # print("no cosi")
@@ -317,11 +338,7 @@ class SurfaceBrightnessDustSheetPlane(SurfaceBrightness):
                     self.sb_true_matrix[j, i] = 0
                 else:
                     self.sb_true_matrix[j, i] = (
-                        self.xy_matrix[j, i, 3]
-                        * Ir
-                        * S[j, i]
-                        * self.dz0
-                        / (4 * np.pi * r * self.rhodrho)
+                        self.xy_matrix[j, i, 3] * Ir * S[j, i] * self.dz0 / (4 * np.pi * r**2)
                     )
 
         return self.cossigma, self.sb_true_matrix

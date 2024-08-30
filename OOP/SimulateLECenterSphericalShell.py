@@ -2,6 +2,7 @@ import sys
 import numpy as np
 import matplotlib.pyplot as plt
 import pickle
+import json
 import scipy.stats as stats
 from definitions import CONFIG_PATH_DUST, CONFIG_PATH_UTILS, PATH_TO_RESULTS_SIMULATIONS, PATH_TO_RESULTS_FIGURES
 sys.path.append(CONFIG_PATH_DUST)
@@ -20,19 +21,40 @@ import utils as utils
 
 
 def sphere(wavel, dz0, ct, dt0, r0ly, source1, save=False, show_plots=False):
+    """
+        Calculate the LE, the LE image and surface brightness
+
+        Arguments:
+            wavel: wavelenght of observation
+            dz0: thickness of the dust in ly, given by user in in the txt containing arguments: parameters['dz0'] in pc
+            ct: LE time of observation in years after max of source, given by user in in the txt containing arguments: parameters['ct'] in days
+            dt0: duration of source in years, given by user in in the txt containing arguments: parameters['dt0'] in days
+            r0ly: radii of sphere in ly given by user in the txt containing arguments: parameters['radii'] in pc
+            source1: Source object
+            save: save results, images, plot and txt with LE params
+            show_plots: show plots at the end of simulation
+
+        Returns:
+            Plots
+    """
+
     A = 0
     B = 0
     F = 0
     D = r0ly
     params = [A, B, F, D]
 
+    # Initiliaze DustShape object 
     sphere1 = SphereCenter(params, dz0)
+    # Calculate LE object
     LE_sphere1source1 = LE.LESphereCentered(ct, sphere1, source1)
     x_inter_values, y_inter_values, z_inter_values, new_xs, new_ys = LE_sphere1source1.run()
+    # Calculate surface brightness
     cossigma, surface = sb.SurfaceBrightnessAnalytical(wavel, source1, LE_sphere1source1, [x_inter_values, y_inter_values, z_inter_values]).calculate_surface_brightness()
 
     n_speci = f"ShereCentered_dt0_{int(dt0 / fc.dtoy)}_ct{int(ct / fc.dtoy)}_r{params[-1]}_dz0{round(dz0 / fc.pctoly, 2)}"
 
+    # Initialize and calculate the LE image from LE and surface brightness
     le_img = LEImageAnalytical(LE_sphere1source1, sphere1, surface, pixel_resolution = 0.2, cmap = 'magma_r')
     surface_val, surface_img, x_img, y_img = le_img.create_le_surface()
 
@@ -64,6 +86,8 @@ def sphere(wavel, dz0, ct, dt0, r0ly, source1, save=False, show_plots=False):
         np.save(pathg+"\\x_inter_arcsec"+n_speci+".npy", le_img.new_xs)
         np.save(pathg+"\\y_inter_arcsec"+n_speci+".npy", le_img.new_ys)
         np.save(pathg+"\\surface_"+n_speci+".npy", surface_img)
+        np.save(pathg+"\\surface_values"+n_speci+".npy", surface_val)
+
 
         # -- save the intersection points in xyz system in ly
         np.save(pathg+"\\x_inter_ly"+n_speci+".npy", x_inter_values)
@@ -82,7 +106,17 @@ def sphere(wavel, dz0, ct, dt0, r0ly, source1, save=False, show_plots=False):
 # sphere(dz0, ct, dt0, r0ly, source1, save=True)
 
 def run(file_name, args):
-    import json
+    """
+        Read txt containing a dict with the mandatory parameters for each type simulation.
+        Initiliaze the Source object.
+        Call func to initilize LE calculation.
+
+        Arguments:
+            file_name = args: ins.txtparameters
+            args: ins.bool_save, ins.bool_show_plots
+
+    """
+    
     with open(file_name, 'rb') as handle:
         parameters = json.load(handle)
     dt0 =  parameters['dt0'] * fc.dtoy #years

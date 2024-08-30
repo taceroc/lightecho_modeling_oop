@@ -14,6 +14,9 @@ import utils as utils
 from DustShape import SphericalBlub, PlaneDust
 
 class LEImage:
+    """ 
+        Initialize object to create LE image
+    """
     def __init__(self, LE_geometryanalyticalsource, surface, pixel_resolution = 0.2, cmap = 'magma_r'):
         self.pixel = pixel_resolution # arcsec
         self.cmap = cmap
@@ -24,6 +27,15 @@ class LEImage:
         self.surface_img = 0
 
     def define_image_size(self, DustShape):
+        """
+            Define image size given the geometrical limits of the LE 
+            **** This has to change eventually to have physical limits
+
+            Arguments:
+                DustShape: Dust shape define
+            Returns:
+                x and y sizes
+        """
         if (isinstance(DustShape, SphericalBlub) or isinstance(DustShape, PlaneDust)):
             x_lim_min, x_lim_max = np.min(self.new_xs), np.max(self.new_xs)
             y_lim_min, y_lim_max = np.min(self.new_ys), np.max(self.new_ys)
@@ -46,6 +58,15 @@ class LEImage:
         return x_size_img, y_size_img, x_all, y_all 
     
     def create_LE_img(self, x_size_img, y_size_img, x_all, y_all):
+        """
+            Create surface image: convert LE and surfaceb brightness into an image
+            Arguments:
+                x_size_img: x size i pixel
+                y_size_img: y size in pixel
+                x_all, y_all: meshgrid where LE fits
+            Returns:
+                surface_img: LE image
+        """
         self.surface_img = np.ones((x_all.shape[0], x_all.shape[1], 3), dtype=np.uint8) * 255
         # center = np.zeros([2])
         # print(np.nanmin(self.surface_val), np.nanmax(self.surface_val))
@@ -64,13 +85,18 @@ class LEImage:
         return self.surface_img
 
 class LEImageAnalytical(LEImage):
+    """
+        Subclass when solution is analytical: infinite plane and sphere centered
+    """
 
     def __init__(self, LE_geometryanalyticalsource, geometry, surface, pixel_resolution = 0.2, cmap = 'magma_r'):
         super().__init__(LE_geometryanalyticalsource, surface, pixel_resolution, cmap)
+        # inner an outer radii of LE
         self.r_le_in = utils.convert_ly_to_arcsec(LE_geometryanalyticalsource.d, LE_geometryanalyticalsource.r_le_in)
         self.r_le_out = utils.convert_ly_to_arcsec(LE_geometryanalyticalsource.d, LE_geometryanalyticalsource.r_le_out)
 
         self.geometry_to_use = geometry
+        # act, bct: origin of LE in x and y
         self.act = LE_geometryanalyticalsource.ct * (self.geometry_to_use.eq_params[0] / self.geometry_to_use.eq_params[2]) if self.geometry_to_use.eq_params[2] != 0 else 0
         self.act = utils.convert_ly_to_arcsec(LE_geometryanalyticalsource.d, self.act)
         self.bct = LE_geometryanalyticalsource.ct * (self.geometry_to_use.eq_params[1] / self.geometry_to_use.eq_params[2]) if self.geometry_to_use.eq_params[2] != 0 else 0
@@ -80,17 +106,30 @@ class LEImageAnalytical(LEImage):
 
 
     def interpolation_radiis(self):
+        """
+            Interpolate inner and outer radii
+        """
         f_IN = interpolate.NearestNDInterpolator(list(zip(self.new_xs[0,1,:], self.new_ys[0,1,:])), self.r_le_in)
         f_OUT = interpolate.NearestNDInterpolator(list(zip(self.new_xs[0,0,:], self.new_ys[0,0,:])), self.r_le_out)
 
         return f_IN, f_OUT
 
     def interpolation_surface(self):
+        """
+            Interpolate surface brightness values
+        """
         surface_inter_y = interpolate.LinearNDInterpolator(list(zip(self.new_xs[0,0,:], self.new_ys[0,0,:])), self.surface_original)
         return surface_inter_y
     
     def create_le_surface(self):
+        """
+            Create the LE image. 
 
+            Returns:
+                surfave_val: matrix surface brightness values>> no colors
+                surface_img: surface brightness image >> assign color
+                x_img, y_img: pixels from the meshgrid that fell into the LE shape
+        """
         x_img = []
         y_img = []
         R_IN, R_OUT = self.interpolation_radiis()
@@ -100,9 +139,8 @@ class LEImageAnalytical(LEImage):
 
         for i in range(x_size_img):
             for j in range(y_size_img):
-                # print(j,i)
+                # points have to be inside the LE ring
                 if (R_IN(x_all[j,i], y_all[j,i]) <= np.sqrt((x_all[j,i] + self.act)**2 + (y_all[j,i] + self.bct)**2) <= R_OUT(x_all[j,i], y_all[j,i])):
-                    # print(j,i)
                     x_img.append(x_all[j,i])
                     y_img.append(y_all[j,i])
                     self.surface_val[j,i] = surface_inter_y(x_all[j,i], y_all[j,i])
@@ -113,6 +151,9 @@ class LEImageAnalytical(LEImage):
     
 
 class LEImageNonAnalytical(LEImage):
+    """
+        Subclass when solution is non analytical: fix plane, bulb
+    """
     
     def __init__(self, LE_planedust1source1, geometry, surface, pixel_resolution=0.2, cmap='magma_r'):
         super().__init__(LE_planedust1source1, surface, pixel_resolution, cmap)
@@ -128,7 +169,13 @@ class LEImageNonAnalytical(LEImage):
         self.surface_original = flat_sb[flat[:,0]!=0]
 
     def define_shape_to_interpolate(self, show_shape=False):
-
+        """
+            Given the LE points, find the shape of the LE, it can be irregular, using shapely and finding the polygon
+            Returns:
+                alpha_shape: polygon of LE
+                # This is here so then I don't have to calculate index, arr points again and no need to store it more than once
+                surface_inter_y: interpolation of surface brightness
+        """
         points = list(zip(self.new_xs, self.new_ys))
         index = [i[0] for i in sorted(enumerate(points), key=lambda x: [x[1][1], x[1][0]])]
         arr_points = np.array(points)
@@ -155,6 +202,15 @@ class LEImageNonAnalytical(LEImage):
     
 
     def create_le_surface(self, show_shape=False):
+        """
+            Create the LE image. 
+
+            Returns:
+                surfave_val: matrix surface brightness values>> no colors
+                surface_img: surface brightness image >> assign color
+                x_img, y_img: pixels from the meshgrid that fell into the LE shape
+        """
+
         x_size_img, y_size_img, x_all, y_all = self.define_image_size(self.geometry_to_use)
         alpha_shape, surface_inter_y = self.define_shape_to_interpolate(show_shape)
         self.surface_val = np.zeros([y_size_img, x_size_img])

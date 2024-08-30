@@ -85,7 +85,7 @@ class PlaneDust(DustShape):
             
             eq_params = [A, B, C, D], Ax + By + Fz + D = 0
             dz0: depth sphere of dust in ly
-            dust_shape: pixel size 3d of the dust (image extracted from Spitzer)
+            dust_shape: pixel size of the dust (image extracted from Spitzer)
             dust_position: xyz position of the center of the dust cube from the source
             size_dustsheet: size xy of the sheet in ly
         """
