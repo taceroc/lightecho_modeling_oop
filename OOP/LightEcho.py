@@ -17,8 +17,10 @@ class LE:
     """
         LE define the properties of the Light Echo
         Subclasses:
-            LE_plane
-            LE_sphere_centered
+            LEPlane
+            LESphereCentered
+            LESphericalBulb*** incomplete
+            LESheetDust
     """
     def __init__(self, ct, source):
         """
@@ -77,7 +79,7 @@ class LE:
             act: center of LE in arcsec
 
         Returns:
-            new_xs, new_ys: x,y position in the x-y plane in arcseconds
+            x_projected, y_projected: x,y position in the x-y plane in arcseconds
         """
         self.calculate_rho_thickness()
         phis = np.arctan2(self.y_inter_values, self.x_inter_values)
@@ -121,6 +123,9 @@ class LE:
         return self.x_inter_values, self.y_inter_values, self.z_inter_values, self.x_projected, self.y_projected
     
     def plot(self, new_xs, new_ys, surface, titles):
+        """
+            3D scatter plot of the LE intersection points
+        """
         surface_300_norm = ( surface - np.nanmin(surface)  ) / (np.nanmax(surface) - np.nanmin(surface))
         cmap = matplotlib.colormaps.get_cmap('magma_r')
         normalize = matplotlib.colors.Normalize(vmin=np.nanmin(surface_300_norm), vmax=np.nanmax(surface_300_norm))
@@ -403,11 +408,9 @@ class LESphericalBulb(LE):
 class LESheetDust(LE):
     def __init__(self, ct, sheetdust, source, sheet_dust_img):
         """
-            x: initialize x positions in ly
             ct: time of LE observation in years
-            plane.eq_params = [A, B, C, D], Ax + By + Fz + D = 0
-            sphere.dz0: depth sphere of dust in ly
-            
+            sheetdust: dust information geometry
+            sheet_dust_img: img containing dust information/pixel values
         """
         super().__init__(ct, source)
         self.A = sheetdust.eq_params[0]
@@ -456,7 +459,6 @@ class LESheetDust(LE):
         """
         self.calculate_rle2()
         theta_p = np.linspace(0, 2*np.pi, 1000)
-        # self.calculate_rho_thickness()
 
         self.x_inter_values = np.sqrt(self.r_le2) * np.cos(theta_p) - (self.A/self.F)*self.ct
         self.y_inter_values = np.sqrt(self.r_le2) * np.sin(theta_p) - (self.B/self.F)*self.ct
@@ -464,12 +466,10 @@ class LESheetDust(LE):
         # calculate the z intersections plane
         self.z_inter_values = -(self.D/self.F) - (self.A * self.x_inter_values / self.F) - (self.B * self.y_inter_values / self.F)
         
-
         print(f"There are {self.x_inter_values.shape} initial points in x")
         print(f"There are {self.y_inter_values.shape} initial points in y")
         print(f"There are {self.z_inter_values.shape} initial points in z")
-        # super().calculate_rho_thickness()
-        # print(self.r_le_in, self.r_le_out)
+        # r_le_in/out is calculate here: super().final_xy_projected()
         self.x_projected, self.y_projected = super().final_xy_projected()
         x_lim_min, x_lim_max = np.min(self.x_projected.flatten()) , np.max(self.x_projected.flatten())
         y_lim_min, y_lim_max = np.min(self.y_projected.flatten()), np.max(self.y_projected.flatten())
@@ -506,11 +506,9 @@ class LESheetDust(LE):
         self.z_inter_values = np.concatenate([intersection_points[2]])
 
 
-
         print(f"There are {self.x_inter_values.shape} intersections points in x")
         print(f"There are {self.y_inter_values.shape} intersections points in y")
         print(f"There are {self.z_inter_values.shape} intersections points in z")
-
 
 
         return self.x_inter_values, self.y_inter_values, self.z_inter_values
@@ -573,6 +571,9 @@ class LESheetDust(LE):
     
     
     def plot_sheetdust(self):
+        """
+            Plot dust sheet and intersection points and plane
+        """
         figs = go.Figure()
         figs.add_trace(go.Scatter3d(
             x = [self.x_min, self.x_max, self.x_max, self.x_min, self.x_min, self.x_max, self.x_max, self.x_min],
