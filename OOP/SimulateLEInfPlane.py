@@ -102,6 +102,8 @@ def plane(wavel, dz0, ct, dt0, params, source1, save=False, show_plots=False):
         np.save(pathg+"\\y_inter_ly"+n_speci+".npy", y_inter_values)
         np.save(pathg+"\\z_inter_ly"+n_speci+".npy", z_inter_values)
 
+        np.save(pathg+"\\z_inter_ly"+n_speci+".npy", z_inter_values)
+
     if show_plots == True:
         plt.show()
         figs.show()
