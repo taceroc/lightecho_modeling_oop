@@ -71,7 +71,7 @@ def plane_dust(wavel, dz0, ct, dt0, dust_position, size_cube, params, source1, s
                                   surface_total, 
                                   pixel_resolution = 0.2, 
                                   cmap = 'magma_r')
-    surface_val, surface_img, x_img, y_img = le_img.create_le_surface()
+    surface_val, surface_img, x_img, y_img, z_img_ly = le_img.create_le_surface()
 
     # name of the files
     n_speci = f"planedust_{CUBE_NAME}_dt0_{int(dt0 / fc.dtoy)}_ct{int(ct / fc.dtoy)}_c{dust_position}_size{size_cube}{dust_shape}dz0{round(dz0 / fc.pctoly, 2)}"
@@ -103,6 +103,10 @@ def plane_dust(wavel, dz0, ct, dt0, dust_position, size_cube, params, source1, s
         np.save(pathg+"\\xy_matrix"+n_speci+".npy", xy_matrix)
         np.save(pathg+"\\surface_"+n_speci+".npy", surface_img)
         np.save(pathg+"\\surface_values"+n_speci+".npy", surface_val)
+
+        np.save(pathg+"\\ximg_arcsec"+n_speci+".npy", x_img)
+        np.save(pathg+"\\yimg_arcsec"+n_speci+".npy", y_img)
+        np.save(pathg+"\\zimgly_arcsec"+n_speci+".npy", z_img_ly)
 
 
         # -- save the intersection points in xyz system in ly
