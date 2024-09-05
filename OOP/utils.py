@@ -72,6 +72,16 @@ def convert_ly_to_arcsec(d, r_le_in):
     r_le_in = (r_le_in / d_A ).value / (np.pi / 180 / 3600)
     return r_le_in
 
+def convert_arcsec_to_ly(d, r_le_in):
+    cosmo = FlatLambdaCDM(H0=67.8, Om0=0.308)
+    d = (d * u.lyr).to(u.Mpc)
+    reds = d.to(cu.redshift, cu.redshift_distance(cosmo, kind="comoving"))
+    # linear size = angular_size * d_A
+    d_A = cosmo.angular_diameter_distance(z=reds)
+    r_le_in = r_le_in * (np.pi / 180 / 3600) * d_A.value 
+    r_le_in = (r_le_in * u.Mpc).to(u.lyr)
+    return r_le_in
+
 def plot(new_xs, new_ys, surface, act, bct, ax, fig, save = False, name = "name"):
 
     surface_300_norm = ( surface - np.nanmin(surface)  ) / (np.nanmax(surface) - np.nanmin(surface))

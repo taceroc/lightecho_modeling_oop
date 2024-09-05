@@ -41,7 +41,7 @@ def plane(wavel, dz0, ct, dt0, params, source1, save=False, show_plots=False):
     plane1 = InfPlane(params, dz0)
     # Calculate LE object
     LE_plane1source1 = LE.LEPlane(ct, plane1, source1)
-    x_inter_values, y_inter_values, z_inter_values, new_xs, new_ys = LE_plane1source1.run()
+    x_inter_values, y_inter_values, z_inter_values, new_xs, new_ys, new_zs = LE_plane1source1.run()
     # Calculate surface brightness
     sb_plane = sb.SurfaceBrightnessAnalytical(wavel, source1, LE_plane1source1, [x_inter_values, y_inter_values, z_inter_values])
 
@@ -65,7 +65,7 @@ def plane(wavel, dz0, ct, dt0, params, source1, save=False, show_plots=False):
     
     # Initialize and calculate the LE image from LE and surface brightness
     le_img = LEImageAnalytical(LE_plane1source1, plane1, surface, pixel_resolution = 0.2, cmap = 'magma_r')
-    surface_val, surface_img, x_img, y_img = le_img.create_le_surface()
+    surface_val, surface_img, x_img, y_img, z_img_ly = le_img.create_le_surface()
     
 
     info_le = [{'r_in (arcsec)': le_img.r_le_in,
@@ -92,9 +92,14 @@ def plane(wavel, dz0, ct, dt0, params, source1, save=False, show_plots=False):
         #-- save xy projection, the view as observer and surface brightness
         np.save(pathg+"\\x_inter_arcsec"+n_speci+".npy", le_img.new_xs)
         np.save(pathg+"\\y_inter_arcsec"+n_speci+".npy", le_img.new_ys)
+
         np.save(pathg+"\\surface_"+n_speci+".npy", surface)
         np.save(pathg+"\\surface_img"+n_speci+".npy", surface_img)
         np.save(pathg+"\\surface_values"+n_speci+".npy", surface_val)
+
+        np.save(pathg+"\\ximg_arcsec"+n_speci+".npy", x_img)
+        np.save(pathg+"\\yimg_arcsec"+n_speci+".npy", y_img)
+        np.save(pathg+"\\zimgly_arcsec"+n_speci+".npy", z_img_ly)
 
 
         # -- save the intersection points in xyz system in ly
@@ -102,7 +107,7 @@ def plane(wavel, dz0, ct, dt0, params, source1, save=False, show_plots=False):
         np.save(pathg+"\\y_inter_ly"+n_speci+".npy", y_inter_values)
         np.save(pathg+"\\z_inter_ly"+n_speci+".npy", z_inter_values)
 
-        np.save(pathg+"\\z_inter_ly"+n_speci+".npy", z_inter_values)
+        # np.save(pathg+"\\z_inter_ly"+n_speci+".npy", z_inter_values)
 
     if show_plots == True:
         plt.show()
