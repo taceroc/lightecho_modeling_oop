@@ -26,8 +26,8 @@ def calculate_scattering_function_values(wave, sizeg, waveg, Qcarb, gcarb,
     carbon_distribution = [sd.Dist_carb(idx, B1, B2).value for idx in 1e-4*sizeg*u.cm] #in cm
     silicone_distribution = [sd.Dist_sili(idx).value for idx in 1e-4*sizeg*u.cm] #in cm
     
-    Qc_scs, gc_s, sizes, carbon_distribution = sf.dS_pre(sizeg, waveg, wave, Qcarb, gcarb, carbon_distribution)
-    Qs_scs, gs_s, sizes, silicone_distribution = sf.dS_pre(sizeg, waveg, wave, Qsili, gsili, silicone_distribution)
+    Qc_scs, gc_s, sizes, carbon_distribution = sf.dS_pre_interpolation(sizeg, waveg, wave, Qcarb, gcarb, carbon_distribution)
+    Qs_scs, gs_s, sizes, silicone_distribution = sf.dS_pre_interpolation(sizeg, waveg, wave, Qsili, gsili, silicone_distribution)
 
     return  sizes, Qc_scs, gc_s, carbon_distribution, Qs_scs, gs_s, silicone_distribution
 

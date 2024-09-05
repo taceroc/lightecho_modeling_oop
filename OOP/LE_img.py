@@ -19,9 +19,11 @@ class LEImage:
     """
     def __init__(self, LE_geometryanalyticalsource, surface, pixel_resolution = 0.2, cmap = 'magma_r'):
         self.pixel = pixel_resolution # arcsec
+        self.LE_geom = LE_geometryanalyticalsource
         self.cmap = cmap
-        self.new_xs = utils.convert_ly_to_arcsec(LE_geometryanalyticalsource.d, LE_geometryanalyticalsource.x_projected)
-        self.new_ys = utils.convert_ly_to_arcsec(LE_geometryanalyticalsource.d, LE_geometryanalyticalsource.y_projected)
+        self.new_xs = utils.convert_ly_to_arcsec(LE_geometryanalyticalsource.d+LE_geometryanalyticalsource.z_projected, LE_geometryanalyticalsource.x_projected)
+        self.new_ys = utils.convert_ly_to_arcsec(LE_geometryanalyticalsource.d+LE_geometryanalyticalsource.z_projected, LE_geometryanalyticalsource.y_projected)
+
         self.surface_original = surface
         self.surface_val = 0
         self.surface_img = 0
@@ -39,9 +41,17 @@ class LEImage:
         if (isinstance(DustShape, SphericalBlub) or isinstance(DustShape, PlaneDust)):
             x_lim_min, x_lim_max = np.min(self.new_xs), np.max(self.new_xs)
             y_lim_min, y_lim_max = np.min(self.new_ys), np.max(self.new_ys)
+
+            x_lim_min_ly, x_lim_max_ly = np.min(self.LE_geom.x_projected), np.max(self.LE_geom.x_projected)
+            y_lim_min_ly, y_lim_max_ly = np.min(self.LE_geom.y_projected), np.max(self.LE_geom.y_projected)
+            # z_lim_min_ly, z_lim_max_ly = np.min(self.LE_geom.z_projected), np.max(self.LE_geom.z_projected)
+
         else:
-            x_lim_min, x_lim_max = np.min(self.new_xs[0,:,:]) - 10 , np.max(self.new_xs[0,:,:]) + 10
-            y_lim_min, y_lim_max = -np.max(self.new_ys[0,:,:]) - 10, np.max(self.new_ys[0,:,:]) + 10
+            x_lim_min, x_lim_max = np.min(self.new_xs[0,:,:]) , np.max(self.new_xs[0,:,:])
+            y_lim_min, y_lim_max = -np.max(self.new_ys[0,:,:]), np.max(self.new_ys[0,:,:])
+
+            x_lim_min_ly, x_lim_max_ly = np.min(self.LE_geom.x_projected), np.max(self.LE_geom.x_projected)
+            y_lim_min_ly, y_lim_max_ly = -np.max(self.LE_geom.y_projected), np.max(self.LE_geom.y_projected)
         # print(x_lim_min, x_lim_max, y_lim_min, y_lim_max)
 
         x_tot_arcsec = np.abs(round((x_lim_max - x_lim_min),0))
@@ -53,9 +63,13 @@ class LEImage:
         print("size img pixels", x_size_img, y_size_img)
         x_all, y_all = np.meshgrid(np.linspace(x_lim_min, x_lim_max, x_size_img),
                 np.linspace(y_lim_min, y_lim_max, y_size_img ))
+        
+        x_all_ly, y_all_ly = np.meshgrid(np.linspace(x_lim_min_ly, x_lim_max_ly, x_size_img),
+                np.linspace(y_lim_min_ly, y_lim_max_ly, y_size_img ))
+        z_all_ly = self.LE_geom.func_for_z(x_all_ly, y_all_ly)
 
 
-        return x_size_img, y_size_img, x_all, y_all 
+        return x_size_img, y_size_img, x_all, y_all, z_all_ly
     
     def create_LE_img(self, x_size_img, y_size_img, x_all, y_all):
         """
@@ -130,24 +144,30 @@ class LEImageAnalytical(LEImage):
                 surface_img: surface brightness image >> assign color
                 x_img, y_img: pixels from the meshgrid that fell into the LE shape
         """
-        x_img = []
-        y_img = []
+        # x_img = []
+        # y_img = []
+        # z_img_ly = []
         R_IN, R_OUT = self.interpolation_radiis()
         surface_inter_y  = self.interpolation_surface()
-        x_size_img, y_size_img, x_all, y_all = self.define_image_size(self.geometry_to_use)
+        x_size_img, y_size_img, x_all, y_all, z_all_ly = self.define_image_size(self.geometry_to_use)
         self.surface_val = np.zeros([y_size_img, x_size_img])
+        x_img = np.zeros([y_size_img, x_size_img])
+        y_img = np.zeros([y_size_img, x_size_img])
+        z_img_ly = np.zeros([y_size_img, x_size_img])
+        
 
         for i in range(x_size_img):
             for j in range(y_size_img):
                 # points have to be inside the LE ring
                 if (R_IN(x_all[j,i], y_all[j,i]) <= np.sqrt((x_all[j,i] + self.act)**2 + (y_all[j,i] + self.bct)**2) <= R_OUT(x_all[j,i], y_all[j,i])):
-                    x_img.append(x_all[j,i])
-                    y_img.append(y_all[j,i])
+                    x_img[j,i] = x_all[j,i]
+                    y_img[j,i] = y_all[j,i]
+                    z_img_ly[j,i] = z_all_ly[j,i]
                     self.surface_val[j,i] = surface_inter_y(x_all[j,i], y_all[j,i])
 
         self.surface_img = self.create_LE_img(x_size_img, y_size_img, x_all, y_all)
 
-        return self.surface_val, self.surface_img, x_img, y_img
+        return self.surface_val, self.surface_img, x_img, y_img, z_img_ly
     
 
 class LEImageNonAnalytical(LEImage):
@@ -159,10 +179,10 @@ class LEImageNonAnalytical(LEImage):
         super().__init__(LE_planedust1source1, surface, pixel_resolution, cmap)
         self.surface_img = 0
         self.geometry_to_use = geometry
-        flat = LE_planedust1source1.xy_matrix[:, :, :2].reshape(self.geometry_to_use.side_x*self.geometry_to_use.side_y, 2)
-        cord = np.array([(xf, yf) for xf, yf in flat if xf != 0 or yf != 0])
-        self.new_xs = utils.convert_ly_to_arcsec(LE_planedust1source1.d, cord[:, 0])
-        self.new_ys = utils.convert_ly_to_arcsec(LE_planedust1source1.d, cord[:, 1])
+        flat = LE_planedust1source1.xy_matrix[:, :, :3].reshape(self.geometry_to_use.side_x*self.geometry_to_use.side_y, 3)
+        cord = np.array([(xf, yf, zf) for xf, yf, zf in flat if xf != 0 or yf != 0])
+        self.new_xs = utils.convert_ly_to_arcsec(LE_planedust1source1.d+cord[:, 2], cord[:, 0])
+        self.new_ys = utils.convert_ly_to_arcsec(LE_planedust1source1.d+cord[:, 2], cord[:, 1])
 
 
         flat_sb = surface.reshape(surface.shape[0]*surface.shape[1])
@@ -211,12 +231,17 @@ class LEImageNonAnalytical(LEImage):
                 x_img, y_img: pixels from the meshgrid that fell into the LE shape
         """
 
-        x_size_img, y_size_img, x_all, y_all = self.define_image_size(self.geometry_to_use)
+        x_size_img, y_size_img, x_all, y_all, z_all_ly = self.define_image_size(self.geometry_to_use)
         alpha_shape, surface_inter_y = self.define_shape_to_interpolate(show_shape)
         self.surface_val = np.zeros([y_size_img, x_size_img])
+        x_img = np.zeros([y_size_img, x_size_img])
+        y_img = np.zeros([y_size_img, x_size_img])
+        z_img_ly = np.zeros([y_size_img, x_size_img])
 
-        x_img = []
-        y_img = []
+
+        # x_img = []
+        # y_img = []
+        # z_img_ly = []
         poly = alpha_shape
         
         self.surface_val = np.zeros([y_size_img, x_size_img])
@@ -229,12 +254,17 @@ class LEImageNonAnalytical(LEImage):
                         # print("false")
                         self.surface_val[j,i] = "Nan"
                     else:
-                        x_img.append(x_all[j,i])
-                        y_img.append(y_all[j,i])
+                        # x_img.append(x_all[j,i])
+                        # y_img.append(y_all[j,i])
+                        # z_img_ly.append(z_all_ly[j,i])
+
+                        x_img[j,i] = x_all[j,i]
+                        y_img[j,i] = y_all[j,i]
+                        z_img_ly[j,i] = z_all_ly[j,i]
                         # print("true")
                         self.surface_val[j,i] = surface_inter_y(x_all[j,i], y_all[j,i])
 
         # print(self.surface_val)
         self.surface_img = self.create_LE_img(x_size_img, y_size_img, x_all, y_all)
 
-        return self.surface_val, self.surface_img, x_img, y_img
+        return self.surface_val, self.surface_img, x_img, y_img, z_img_ly

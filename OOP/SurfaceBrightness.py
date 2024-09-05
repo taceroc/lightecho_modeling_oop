@@ -43,6 +43,34 @@ class SurfaceBrightness:
         self.lc = lc
         self.sb_true_matrix = 0
 
+    def define_bandpass_rubin(self):
+#         {'band_name': ['lsstu', 'lsstg', 'lsstr', 'lssti', 'lsstz', 'lssty'],
+#  'min_wave_A': [3104.9999999999995,
+#   3865.9999999999995,
+#   5369.999999999999,
+#   6759.999999999999,
+#   8029.999999999998,
+#   9083.999999999998],
+#  'max_wave_A': [4085.9999999999995,
+#   5669.999999999999,
+#   7059.999999999999,
+#   8329.999999999998,
+#   9384.999999999998,
+#   10944.999999999998]}
+        
+        lsstu = [np.array([3104.9999999999995, 4085.9999999999995]) * 1e-4, 'u', 24.5, 10**((-48.6 - 24.5) / 2.5)]
+        lsstg = [np.array([3865.9999999999995, 5669.999999999999]) * 1e-4, 'g', 25, 10**((-48.6 - 25) / 2.5)]
+        lsstr = [np.array([5369.999999999999, 7059.999999999999]) * 1e-4, 'r', 25, 10**((-48.6 - 25) / 2.5)]
+        lssti = [np.array([6759.999999999999, 8329.999999999998]) * 1e-4, 'i', 24, 10**((-48.6 - 24) / 2.5)]
+        lsstz = [np.array([8029.999999999998, 9384.999999999998]) * 1e-4, 'z', 23.5, 10**((-48.6 - 23.5) / 2.5)]
+        lssty = [np.array([9083.999999999998, 10944.999999999998]) * 1e-4, 'y', 23.5, 10**((-48.6 - 23.5) / 2.5)]
+
+        for ixi, bandpasses in enumerate([lsstu, lsstg, lsstr, lssti, lsstz, lssty]):
+            if bandpasses[0][0] <= self.wavel <= bandpasses[0][1]:
+                # band = bandpasses[1]
+                self.band_pass_index = ixi
+
+
     def rhos_half(self):
         """
             Calculate the thickness of the visible light echo, the rho coordiante, Sugermann 2003. Eq 11

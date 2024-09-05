@@ -13,6 +13,29 @@ from numba import jit, prange
 
 ##utilities.py
 
+def define_bandpass_rubin(wavel):
+    """
+        Find the bandpass of the wavelenght
+
+        Arguments:
+            wavel: wavelenght of LE observation in micrometers
+        Returns:
+            lsstband: wavelenght limits, band letter, max magnitude, min flux
+    """
+
+        
+    lsstu = [np.array([3104.9999999999995, 4085.9999999999995]) * 1e-4, 'u', 24.5, 10**((-48.6 - 24.5) / 2.5)]
+    lsstg = [np.array([3865.9999999999995, 5669.999999999999]) * 1e-4, 'g', 25, 10**((-48.6 - 25) / 2.5)]
+    lsstr = [np.array([5369.999999999999, 7059.999999999999]) * 1e-4, 'r', 25, 10**((-48.6 - 25) / 2.5)]
+    lssti = [np.array([6759.999999999999, 8329.999999999998]) * 1e-4, 'i', 24, 10**((-48.6 - 24) / 2.5)]
+    lsstz = [np.array([8029.999999999998, 9384.999999999998]) * 1e-4, 'z', 23.5, 10**((-48.6 - 23.5) / 2.5)]
+    lssty = [np.array([9083.999999999998, 10944.999999999998]) * 1e-4, 'y', 23.5, 10**((-48.6 - 23.5) / 2.5)]
+
+    for bandpasses in [lsstu, lsstg, lsstr, lssti, lsstz, lssty]:
+        if bandpasses[0][0] <= wavel <= bandpasses[0][1]:
+            return bandpasses
+
+
 def project_skyplane_plane_cube_2ddust(x_inter, y_inter, z_inter, cossigma):
     """
     Project x,y,z of intersection paraboloid and dust into the sky plane
@@ -47,6 +70,16 @@ def convert_ly_to_arcsec(d, r_le_in):
     d_A = cosmo.angular_diameter_distance(z=reds)
     r_le_in = (r_le_in * u.lyr).to(u.Mpc)
     r_le_in = (r_le_in / d_A ).value / (np.pi / 180 / 3600)
+    return r_le_in
+
+def convert_arcsec_to_ly(d, r_le_in):
+    cosmo = FlatLambdaCDM(H0=67.8, Om0=0.308)
+    d = (d * u.lyr).to(u.Mpc)
+    reds = d.to(cu.redshift, cu.redshift_distance(cosmo, kind="comoving"))
+    # linear size = angular_size * d_A
+    d_A = cosmo.angular_diameter_distance(z=reds)
+    r_le_in = r_le_in * (np.pi / 180 / 3600) * d_A.value 
+    r_le_in = (r_le_in * u.Mpc).to(u.lyr)
     return r_le_in
 
 def plot(new_xs, new_ys, surface, act, bct, ax, fig, save = False, name = "name"):

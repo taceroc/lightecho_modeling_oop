@@ -98,6 +98,7 @@ class LE:
         self.x_projected = xs_p.reshape(1,2,len(phis))
         self.y_projected = ys_p.reshape(1,2,len(phis))
 
+
         return self.x_projected, self.y_projected
     
     def run(self):
@@ -119,8 +120,10 @@ class LE:
             print(e)
             sys.exit(1)
         self.x_projected, self.y_projected = self.final_xy_projected()
+
+        self.z_projected = self.func_for_z(self.x_projected, self.y_projected) #-(self.D/self.F) - (self.A/self.F) * self.x_inter_values - (self.B/self.F) * self.y_inter_values
         
-        return self.x_inter_values, self.y_inter_values, self.z_inter_values, self.x_projected, self.y_projected
+        return self.x_inter_values, self.y_inter_values, self.z_inter_values, self.x_projected, self.y_projected, self.z_projected
     
     def plot(self, new_xs, new_ys, surface, titles):
         """
@@ -183,6 +186,7 @@ class LEPlane(LE):
         self.r_le_out = 0
         self.r_le_in = 0
         self.check_time_forLE()
+        self.func_for_z = self.func_for_z_plane
 
     def check_time_forLE(self):
         """
@@ -212,9 +216,12 @@ class LEPlane(LE):
         self.x_inter_values = np.sqrt(self.r_le2) * np.cos(theta_p) - (self.A/self.F)*self.ct
         self.y_inter_values = np.sqrt(self.r_le2) * np.sin(theta_p) - (self.B/self.F)*self.ct
         # calculate z = z0 - ax >> plane equation
-        self.z_inter_values = -(self.D/self.F) - (self.A/self.F) * self.x_inter_values - (self.B/self.F) * self.y_inter_values
+        self.z_inter_values = self.func_for_z_plane(self.x_inter_values, self.y_inter_values) #-(self.D/self.F) - (self.A/self.F) * self.x_inter_values - (self.B/self.F) * self.y_inter_values
 
         return self.x_inter_values, self.y_inter_values, self.z_inter_values
+    
+    def func_for_z_plane(self, val_x=0, val_y=0):
+        return -(self.D/self.F) - (self.A/self.F) * val_x - (self.B/self.F) * val_y
     
         
 
@@ -239,6 +246,8 @@ class LESphereCentered(LE):
         self.dz0 = sphere.dz0
         self.r_le_out = 0
         self.r_le_in = 0
+        self.func_for_z = self.func_for_z_center_sphere
+
         
     def calculate_rle2(self):
         """
@@ -266,8 +275,11 @@ class LESphereCentered(LE):
         self.x_inter_values = np.sqrt(self.r_le2) * np.cos(theta_p)
         self.y_inter_values = np.sqrt(self.r_le2) * np.sin(theta_p)
         # # calculate z2 = r2 - x2 - y2 
-        self.z_inter_values = np.sqrt(self.D**2 - self.x_inter_values**2 - self.y_inter_values**2)
+        self.z_inter_values = self.func_for_z(self.x_inter_values, self.y_inter_value) #np.sqrt(self.D**2 - self.x_inter_values**2 - self.y_inter_values**2)
         return self.x_inter_values, self.y_inter_values, self.z_inter_values
+    
+    def func_for_z_center_sphere(self, val_x=0, val_y=0):
+        return np.sqrt(self.D**2 - val_x**2 - val_y**2)
     
 
 class LESphericalBulb(LE):
@@ -432,6 +444,7 @@ class LESheetDust(LE):
         self.z_max = sheetdust.z_max
         self.sheetdust = sheetdust
         self.sheet_dust_img = sheet_dust_img
+        self.func_for_z = self.func_for_z_plane
         
     
     def check_time_forLE(self):
@@ -471,6 +484,7 @@ class LESheetDust(LE):
         print(f"There are {self.z_inter_values.shape} initial points in z")
         # r_le_in/out is calculate here: super().final_xy_projected()
         self.x_projected, self.y_projected = super().final_xy_projected()
+        self.z_projected = self.func_for_z(self.x_projected, self.y_projected)
         x_lim_min, x_lim_max = np.min(self.x_projected.flatten()) , np.max(self.x_projected.flatten())
         y_lim_min, y_lim_max = np.min(self.y_projected.flatten()), np.max(self.y_projected.flatten())
         # print("x_lim_min, x_lim_max")
@@ -510,8 +524,11 @@ class LESheetDust(LE):
         print(f"There are {self.y_inter_values.shape} intersections points in y")
         print(f"There are {self.z_inter_values.shape} intersections points in z")
 
-
         return self.x_inter_values, self.y_inter_values, self.z_inter_values
+    
+
+    def func_for_z_plane(self, val_x=0, val_y=0):
+        return -(self.D/self.F) - (self.A/self.F) * val_x - (self.B/self.F) * val_y
 
     
     def XYZ_merge_plane_2ddust(self):
@@ -549,7 +566,7 @@ class LESheetDust(LE):
             x_ind = up[0] - 1
             y_ind = up[1] - 1
             # print(x_ind, y_ind, x_bins[x_ind], y_bins[y_ind])
-            zi = -(self.D/self.F) - (self.A * x_bins[x_ind] / self.F) - (self.B * y_bins[y_ind] / self.F)
+            zi = self.func_for_z(x_bins[x_ind], y_bins[y_ind]) #-(self.D/self.F) - (self.A * x_bins[x_ind] / self.F) - (self.B * y_bins[y_ind] / self.F)
             self.xy_matrix[y_ind, x_ind, :] = x_bins[x_ind], y_bins[y_ind], zi, self.sheet_dust_img[y_ind, x_ind]
 
         return self.xy_matrix
@@ -566,6 +583,7 @@ class LESheetDust(LE):
             print(e)
             sys.exit(1)
         self.xy_matrix = self.XYZ_merge_plane_2ddust()
+        
         return self.x_inter_values, self.y_inter_values, self.z_inter_values, self.xy_matrix
     
     
