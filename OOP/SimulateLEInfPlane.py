@@ -57,19 +57,80 @@ def plane(wavel, dz0, ct, dt0, params, source1, save=False, show_plots=False):
     sb_plane.lc = lc
     #####
 
+    def find_nearest(time_array, value):
+        time_array = np.asarray(time_array)
+        idx = (np.abs(time_array - value)).argmin()
+        return idx
+
+    diff_dt = sb_plane.determine_flux_time_loop()
+    print(diff_dt)
+    times_to_loop = np.linspace(np.min(sb_plane.lc['time']), np.min(sb_plane.lc['time'])+diff_dt, 10)
+    print(times_to_loop.shape)
+    all_x_inter_values = []
+    all_y_inter_values = []
+    all_z_inter_values = []
+    all_new_xs = []
+    all_new_ys = []
+    all_new_zs = []
+    all_r_le = []
+    all_flux = []
+    for tt in times_to_loop[::-1]:
+        idxs = find_nearest(sb_plane.lc['time'], tt)
+        flux_to_use = sb_plane.lc['mag'][idxs]
+        flux_to_use = 10**((-48.6 - flux_to_use) / 2.5)
+        ctt = ct-tt
+        
+        LE_plane1source1_tt = LE.LEPlane(ctt, plane1, source1)
+        print("TIMEEE", ctt / fc.dtoy)
+        x_inter_values, y_inter_values, z_inter_values, new_xs, new_ys, new_zs = LE_plane1source1_tt.run()
+        all_x_inter_values.extend(x_inter_values)
+        all_y_inter_values.extend(y_inter_values)
+        all_z_inter_values.extend(z_inter_values)
+        
+        all_new_xs.extend(new_xs.flatten())
+        all_new_ys.extend(new_ys.flatten())
+        all_new_zs.extend(new_zs.flatten())
+        print("RLE")
+        print(new_xs.shape)
+        print(len(all_new_zs))
+        # print(LE_plane1source1_tt.r_le)
+        all_r_le.append(LE_plane1source1_tt.r_le)
+        all_flux.extend([np.ones_like(x_inter_values) * flux_to_use])
+
+    
+    all_x_inter_values = np.array(all_x_inter_values)
+    all_y_inter_values = np.array(all_y_inter_values)
+    all_z_inter_values = np.array(all_z_inter_values)
+    all_new_xs = np.array(all_new_xs).reshape(1,1,len(all_x_inter_values))
+    print("all_new_xs shape")
+    print(all_new_xs.shape)
+    all_new_ys = np.array(all_new_ys).reshape(1,1,len(all_x_inter_values))
+    all_new_zs = np.array(all_new_zs).reshape(1,1,len(all_x_inter_values))
+    all_flux = np.array(all_flux).reshape(len(all_x_inter_values))
+
+
+    LE_plane1source1.x_projected = all_new_xs
+    LE_plane1source1.y_projected = all_new_ys
+    LE_plane1source1.z_projected = all_new_zs
+    LE_plane1source1.r_le = np.array(all_r_le).reshape(len(all_x_inter_values))
+
+
+    sb_plane_all = sb.SurfaceBrightnessAnalytical(wavel, source1, LE_plane1source1, [all_x_inter_values, all_y_inter_values, all_z_inter_values])
+
+    sb_plane_all.Fl = all_flux
+
     # Calculate surface brightness
-    cossigma, surface = sb_plane.calculate_surface_brightness()
+    cossigma, surface = sb_plane_all.calculate_surface_brightness()
 
     # fig, ax = plt.subplots(1,1, figsize = (8,8))
-    n_speci = f"InfPlane_dt0_{int(dt0 / fc.dtoy)}_ct{int(ct / fc.dtoy)}_loc{params}_dz0{round(dz0 / fc.pctoly, 2)}"
+    n_speci = f"InfPlane_dt0_{int(4444 / fc.dtoy)}_ct{int(ct / fc.dtoy)}_loc{params}_dz0{round(dz0 / fc.pctoly, 2)}"
     
     # Initialize and calculate the LE image from LE and surface brightness
     le_img = LEImageAnalytical(LE_plane1source1, plane1, surface, pixel_resolution = 0.2, cmap = 'magma_r')
     surface_val, surface_img, x_img, y_img, z_img_ly = le_img.create_le_surface()
-    
 
     info_le = [{'r_in (arcsec)': le_img.r_le_in,
-                'r_out (arcsec)': le_img.r_le_out,
+                'r_out (arcsec)': le_img.r_le_in,
                 'act (arcsec)': le_img.act,
                 'bct (arcsec)': le_img.bct,
                 'params': params,
@@ -102,16 +163,16 @@ def plane(wavel, dz0, ct, dt0, params, source1, save=False, show_plots=False):
         np.save(pathg+"\\zimgly_arcsec"+n_speci+".npy", z_img_ly)
 
 
-        # -- save the intersection points in xyz system in ly
-        np.save(pathg+"\\x_inter_ly"+n_speci+".npy", x_inter_values)
-        np.save(pathg+"\\y_inter_ly"+n_speci+".npy", y_inter_values)
-        np.save(pathg+"\\z_inter_ly"+n_speci+".npy", z_inter_values)
+        # # -- save the intersection points in xyz system in ly
+        # np.save(pathg+"\\x_inter_ly"+n_speci+".npy", x_inter_values)
+        # np.save(pathg+"\\y_inter_ly"+n_speci+".npy", y_inter_values)
+        # np.save(pathg+"\\z_inter_ly"+n_speci+".npy", z_inter_values)
 
         # np.save(pathg+"\\z_inter_ly"+n_speci+".npy", z_inter_values)
 
     if show_plots == True:
         plt.show()
-        figs.show()
+    #     figs.show()
 
 # dz0 = 0.02 * fc.pctoly #vc.dz0 #ly
 # ct =  180 * fc.dtoy #180
@@ -134,7 +195,7 @@ def run(file_name, args):
     """
     with open(file_name, 'rb') as handle:
         parameters = json.load(handle)
-    dt0 =  parameters['dt0'] * fc.dtoy #years
+    dt0 =  0 #parameters['dt0'] * fc.dtoy #years
     d =  vc.d #parameters['d']
     Flmax =  dc.Flmax #parameters['dt0']
     dz0 =  parameters['dz0'] * fc.pctoly

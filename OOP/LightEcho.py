@@ -52,21 +52,21 @@ class LE:
         self.x_inter_values = x_inv_nan[~np.isnan(y_inter)]
         print(self.x_inter_values.shape)
         
-    def calculate_rho_thickness(self):
-        """
-            Calculate the rho in the sky plane (xy) and thickness according to Sugermann 2003 and Xi 1994
-            and calculate the radius out and radius min according to that thickness
-        """
-        r_le = np.sqrt(self.r_le2)
-        rhos = np.sqrt(2 * self.z_inter_values * self.ct + (self.ct)**2 )
-        half_obs_thickness = np.sqrt( (self.ct / rhos) ** 2 * self.dz0 ** 2 + ( (rhos * fc.c / (2 * self.ct)) + ( fc.c * self.ct / (2 * rhos) )) ** 2 * self.dt0  ** 2 ) / 2
-        # -- include the thickness in xy plane
-        if len(np.array(half_obs_thickness)) != 1:
-            self.r_le_out = np.ones(len(half_obs_thickness)) * r_le 
-            self.r_le_in = r_le - 2*half_obs_thickness
-        else:
-            self.r_le_out = r_le 
-            self.r_le_in = r_le - 2*half_obs_thickness
+    # def calculate_rho_thickness(self):
+    #     """
+    #         Calculate the rho in the sky plane (xy) and thickness according to Sugermann 2003 and Xi 1994
+    #         and calculate the radius out and radius min according to that thickness
+    #     """
+    #     r_le = np.sqrt(self.r_le2)
+    #     rhos = np.sqrt(2 * self.z_inter_values * self.ct + (self.ct)**2 )
+    #     half_obs_thickness = np.sqrt( (self.ct / rhos) ** 2 * self.dz0 ** 2 + ( (rhos * fc.c / (2 * self.ct)) + ( fc.c * self.ct / (2 * rhos) )) ** 2 * self.dt0  ** 2 ) / 2
+    #     # -- include the thickness in xy plane
+    #     if len(np.array(half_obs_thickness)) != 1:
+    #         self.r_le_out = np.ones(len(half_obs_thickness)) * r_le 
+    #         self.r_le_in = r_le - 2*half_obs_thickness
+    #     else:
+    #         self.r_le_out = r_le 
+    #         self.r_le_in = r_le - 2*half_obs_thickness
         
     def final_xy_projected(self):
         """
@@ -81,22 +81,23 @@ class LE:
         Returns:
             x_projected, y_projected: x,y position in the x-y plane in arcseconds
         """
-        self.calculate_rho_thickness()
+        # self.calculate_rho_thickness()
         phis = np.arctan2(self.y_inter_values, self.x_inter_values)
         print(phis.shape)        
-        radii_p = [self.r_le_out, self.r_le_in]
+        radii_p = np.sqrt(self.r_le2)
+        self.r_le = np.ones_like(self.y_inter_values)*radii_p
         if self.F != 0:
             coefx = (self.A/self.F)*self.ct
             coefy = (self.B/self.F)*self.ct
         else:
             coefx = 0
             coefy = 0
-        xs_p = np.concatenate([radii_p[0] * np.cos(phis) - coefx, radii_p[1] * np.cos(phis) - coefx]).reshape(2, len(phis))
+        xs_p = np.array([radii_p * np.cos(phis) - coefx]).reshape(1, len(phis))
         print("b", self.B)
-        ys_p = np.concatenate([radii_p[0] * np.sin(phis) - coefy, radii_p[1] * np.sin(phis) - coefy]).reshape(2, len(phis))
+        ys_p = np.array([radii_p * np.sin(phis) - coefy]).reshape(1, len(phis))
 
-        self.x_projected = xs_p.reshape(1,2,len(phis))
-        self.y_projected = ys_p.reshape(1,2,len(phis))
+        self.x_projected = xs_p.reshape(1,1,len(phis))
+        self.y_projected = ys_p.reshape(1,1,len(phis))
 
 
         return self.x_projected, self.y_projected
@@ -140,12 +141,12 @@ class LE:
                 marker=dict(color=[f'rgb({int(cc1[0])}, {int(cc1[1])}, {int(cc1[2])})' for cc1 in cmap(normalize(surface_300_norm)) * 255], size=10),
                 mode="markers")
                     )
-            figs.add_trace(go.Scatter(
-                x=new_xs[0,1,:],
-                y=new_ys[0,1,:],
-                marker=dict(color=[f'rgb({int(cc1[0])}, {int(cc1[1])}, {int(cc1[2])})' for cc1 in cmap(normalize(surface_300_norm)) * 255], size=10),
-                mode="markers")
-                    )
+            # figs.add_trace(go.Scatter(
+            #     x=new_xs[0,1,:],
+            #     y=new_ys[0,1,:],
+            #     marker=dict(color=[f'rgb({int(cc1[0])}, {int(cc1[1])}, {int(cc1[2])})' for cc1 in cmap(normalize(surface_300_norm)) * 255], size=10),
+            #     mode="markers")
+            #         )
             
             figs.update_layout(
                 title=titles,
