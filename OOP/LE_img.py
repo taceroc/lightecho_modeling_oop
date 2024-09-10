@@ -106,9 +106,9 @@ class LEImageAnalytical(LEImage):
     def __init__(self, LE_geometryanalyticalsource, geometry, surface, pixel_resolution = 0.2, cmap = 'magma_r'):
         super().__init__(LE_geometryanalyticalsource, surface, pixel_resolution, cmap)
         # inner an outer radii of LE
-        # self.r_le_in = utils.convert_ly_to_arcsec(LE_geometryanalyticalsource.d, LE_geometryanalyticalsource.r_le_in)
-        # self.r_le_out = utils.convert_ly_to_arcsec(LE_geometryanalyticalsource.d, LE_geometryanalyticalsource.r_le_out)
-        self.r_le_in = utils.convert_ly_to_arcsec(LE_geometryanalyticalsource.d, LE_geometryanalyticalsource.r_le)
+        self.r_le_in = utils.convert_ly_to_arcsec(LE_geometryanalyticalsource.d, LE_geometryanalyticalsource.r_le_in)
+        self.r_le_out = utils.convert_ly_to_arcsec(LE_geometryanalyticalsource.d, LE_geometryanalyticalsource.r_le_out)
+        # self.r_le_in = utils.convert_ly_to_arcsec(LE_geometryanalyticalsource.d, LE_geometryanalyticalsource.r_le)
 
 
         self.geometry_to_use = geometry
@@ -125,21 +125,26 @@ class LEImageAnalytical(LEImage):
         """
             Interpolate inner and outer radii
         """
-        # f_IN = interpolate.NearestNDInterpolator(list(zip(self.new_xs[0,1,:], self.new_ys[0,1,:])), self.r_le_in)
-        # f_OUT = interpolate.NearestNDInterpolator(list(zip(self.new_xs[0,0,:], self.new_ys[0,0,:])), self.r_le_out)
+        f_IN = interpolate.NearestNDInterpolator(list(zip(self.new_xs[0,1,:], self.new_ys[0,1,:])), self.r_le_in)
+        f_OUT = interpolate.NearestNDInterpolator(list(zip(self.new_xs[0,0,:], self.new_ys[0,0,:])), self.r_le_out)
         print("INTERPOLATION SHAPES")
         print(self.new_xs[0,0,:].shape, self.r_le_in.shape)
-        f_IN = interpolate.NearestNDInterpolator(list(zip(self.new_xs[0,0,:], self.new_ys[0,0,:])), self.r_le_in)
+        # f_IN = interpolate.NearestNDInterpolator(list(zip(self.new_xs[0,0,:], self.new_ys[0,0,:])), self.r_le_in)
 
 
-        return f_IN#, f_OUT
+        return f_IN, f_OUT
 
     def interpolation_surface(self):
         """
             Interpolate surface brightness values
         """
-        surface_inter_y = interpolate.LinearNDInterpolator(list(zip(self.new_xs[0,0,:], self.new_ys[0,0,:])), self.surface_original)
-        return surface_inter_y
+        # interpo_surf = np.concatenate((np.array(self.surface_original), np.array(self.surface_original))).reshape(1,2,len(self.surface_original)).flatten()
+        interpo_surf = self.surface_original.copy()
+        print(interpo_surf.shape)
+        surface_inter_y = interpolate.CloughTocher2DInterpolator(list(zip(self.new_xs[0,0,:], self.new_ys[0,0,:])), interpo_surf)
+        surface_inter_y1 = interpolate.CloughTocher2DInterpolator(list(zip(self.new_xs[0,1,:], self.new_ys[0,1,:])), interpo_surf)
+
+        return surface_inter_y, surface_inter_y1
     
     def create_le_surface(self):
         """
@@ -153,10 +158,10 @@ class LEImageAnalytical(LEImage):
         # x_img = []
         # y_img = []
         # z_img_ly = []
-        # R_IN, R_OUT = self.interpolation_radiis()
-        R_IN = self.interpolation_radiis()
+        R_IN, R_OUT = self.interpolation_radiis()
+        # R_IN = self.interpolation_radiis()
 
-        surface_inter_y  = self.interpolation_surface()
+        surface_inter_y, surface_inter_y1  = self.interpolation_surface()
         x_size_img, y_size_img, x_all, y_all, z_all_ly = self.define_image_size(self.geometry_to_use)
         self.surface_val = np.zeros([y_size_img, x_size_img])
         x_img = np.zeros([y_size_img, x_size_img])
@@ -167,12 +172,25 @@ class LEImageAnalytical(LEImage):
         for i in range(x_size_img):
             for j in range(y_size_img):
                 # points have to be inside the LE ring
-                if (R_IN(x_all[j,i], y_all[j,i]) - 0.5 <= np.sqrt((x_all[j,i] + self.act)**2 + (y_all[j,i] + self.bct)**2) <= R_IN(x_all[j,i], y_all[j,i]) + 0.5):
+                if ((R_IN(x_all[j,i], y_all[j,i])) <= np.sqrt((x_all[j,i] + self.act)**2 + (y_all[j,i] + self.bct)**2) <= (R_OUT(x_all[j,i], y_all[j,i]))):
+                    # print("RADIISS")
+                    # print(R_IN(x_all[j,i], y_all[j,i]),R_OUT(x_all[j,i], y_all[j,i]))
                     x_img[j,i] = x_all[j,i]
                     y_img[j,i] = y_all[j,i]
                     z_img_ly[j,i] = z_all_ly[j,i]
-                    self.surface_val[j,i] = surface_inter_y(x_all[j,i], y_all[j,i])
+                    if np.isnan(surface_inter_y(x_all[j,i], y_all[j,i])):
+                        self.surface_val[j,i] = surface_inter_y1(x_all[j,i], y_all[j,i])
+                    #     print("nan")
+                    if np.isnan(surface_inter_y1(x_all[j,i], y_all[j,i])):
+                        self.surface_val[j,i] = surface_inter_y(x_all[j,i], y_all[j,i])
+                    else:
+                        self.surface_val[j,i] = surface_inter_y(x_all[j,i], y_all[j,i])
 
+        # print(self.surface_val)
+        print(self.surface_val[np.isnan(self.surface_val)].shape)
+        # self.surface_val[np.isnan(self.surface_val)] = surface_inter_y1(x_all[j,i], y_all[j,i])
+        # print(self.surface_val[np.isnan(self.surface_val)].shape)
+        plt.imshow(x_img)
         self.surface_img = self.create_LE_img(x_size_img, y_size_img, x_all, y_all)
 
         return self.surface_val, self.surface_img, x_img, y_img, z_img_ly

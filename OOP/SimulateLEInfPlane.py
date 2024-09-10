@@ -72,7 +72,8 @@ def plane(wavel, dz0, ct, dt0, params, source1, save=False, show_plots=False):
     all_new_xs = []
     all_new_ys = []
     all_new_zs = []
-    all_r_le = []
+    all_r_le_in = []
+    all_r_le_out = []
     all_flux = []
     for tt in times_to_loop[::-1]:
         idxs = find_nearest(sb_plane.lc['time'], tt)
@@ -87,32 +88,35 @@ def plane(wavel, dz0, ct, dt0, params, source1, save=False, show_plots=False):
         all_y_inter_values.extend(y_inter_values)
         all_z_inter_values.extend(z_inter_values)
         
-        all_new_xs.extend(new_xs.flatten())
-        all_new_ys.extend(new_ys.flatten())
-        all_new_zs.extend(new_zs.flatten())
+        all_new_xs.append(new_xs)
+        all_new_ys.append(new_ys)
+        all_new_zs.append(new_zs)
         print("RLE")
         print(new_xs.shape)
         print(len(all_new_zs))
         # print(LE_plane1source1_tt.r_le)
-        all_r_le.append(LE_plane1source1_tt.r_le)
+        all_r_le_in.append(LE_plane1source1_tt.r_le_in)
+        all_r_le_out.append(LE_plane1source1_tt.r_le_out)
+
         all_flux.extend([np.ones_like(x_inter_values) * flux_to_use])
 
     
     all_x_inter_values = np.array(all_x_inter_values)
     all_y_inter_values = np.array(all_y_inter_values)
     all_z_inter_values = np.array(all_z_inter_values)
-    all_new_xs = np.array(all_new_xs).reshape(1,1,len(all_x_inter_values))
+    all_new_xs = np.array(all_new_xs).reshape(1,2,len(all_x_inter_values))
     print("all_new_xs shape")
     print(all_new_xs.shape)
-    all_new_ys = np.array(all_new_ys).reshape(1,1,len(all_x_inter_values))
-    all_new_zs = np.array(all_new_zs).reshape(1,1,len(all_x_inter_values))
+    all_new_ys = np.array(all_new_ys).reshape(1,2,len(all_x_inter_values))
+    all_new_zs = np.array(all_new_zs).reshape(1,2,len(all_x_inter_values))
     all_flux = np.array(all_flux).reshape(len(all_x_inter_values))
 
 
     LE_plane1source1.x_projected = all_new_xs
     LE_plane1source1.y_projected = all_new_ys
     LE_plane1source1.z_projected = all_new_zs
-    LE_plane1source1.r_le = np.array(all_r_le).reshape(len(all_x_inter_values))
+    LE_plane1source1.r_le_in = np.array(all_r_le_in)
+    LE_plane1source1.r_le_out = np.array(all_r_le_out)
 
 
     sb_plane_all = sb.SurfaceBrightnessAnalytical(wavel, source1, LE_plane1source1, [all_x_inter_values, all_y_inter_values, all_z_inter_values])
@@ -123,14 +127,14 @@ def plane(wavel, dz0, ct, dt0, params, source1, save=False, show_plots=False):
     cossigma, surface = sb_plane_all.calculate_surface_brightness()
 
     # fig, ax = plt.subplots(1,1, figsize = (8,8))
-    n_speci = f"InfPlane_dt0_{int(4444 / fc.dtoy)}_ct{int(ct / fc.dtoy)}_loc{params}_dz0{round(dz0 / fc.pctoly, 2)}"
+    n_speci = f"InfPlane_dt0_loop_ct{int(ct / fc.dtoy)}_loc{params}_dz0{round(dz0 / fc.pctoly, 2)}"
     
     # Initialize and calculate the LE image from LE and surface brightness
     le_img = LEImageAnalytical(LE_plane1source1, plane1, surface, pixel_resolution = 0.2, cmap = 'magma_r')
     surface_val, surface_img, x_img, y_img, z_img_ly = le_img.create_le_surface()
 
     info_le = [{'r_in (arcsec)': le_img.r_le_in,
-                'r_out (arcsec)': le_img.r_le_in,
+                'r_out (arcsec)': le_img.r_le_out,
                 'act (arcsec)': le_img.act,
                 'bct (arcsec)': le_img.bct,
                 'params': params,
@@ -139,7 +143,8 @@ def plane(wavel, dz0, ct, dt0, params, source1, save=False, show_plots=False):
                 'ct (days)': int(round(ct / fc.dtoy))}]
     
     fig, ax = plt.subplots(1,1, figsize = (8,8))
-    ax.imshow(surface_img, origin = "lower")
+    aja = ax.imshow(surface_img, origin = "lower")
+    plt.colorbar(aja)
     ax.set_title(n_speci)
     figs = LE_plane1source1.plot(le_img.new_xs, le_img.new_ys, surface, n_speci)
     if save == True:
