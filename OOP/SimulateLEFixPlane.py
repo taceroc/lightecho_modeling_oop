@@ -222,10 +222,10 @@ def run(file_name, args):
         az = parameters['plane_coefficients'][2] 
         z0ly = parameters['plane_coefficients'][3] * fc.pctoly
         params = [a, ay, az, -z0ly]
-        x0 = parameters['dust_position'][0]
-        y0 = parameters['dust_position'][1]
-        z0 = (z0ly - a*x0 - ay*y0) / az if az != 0 else 0
-        dust_position = np.array([x0, y0, z0]) * fc.pctoly
+        x0 = parameters['dust_position'][0] *fc.pctoly
+        y0 = parameters['dust_position'][1] *fc.pctoly
+        z0 = (z0ly - (a*x0) - (ay*y0)) / (az) if az != 0 else 0
+        dust_position = np.array([x0, y0, z0])
     else:
         print("known")
         x0 = parameters['dust_position'][0]

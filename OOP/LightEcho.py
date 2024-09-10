@@ -495,8 +495,8 @@ class LESheetDust(LE):
                 np.linspace(y_lim_min, y_lim_max, 1000))
         print(self.r_le_in.shape, self.x_projected[0,0,:].shape)
         def interpolation_radiis():
-            f_IN = interpolate.NearestNDInterpolator(list(zip(self.x_projected[0,0,:], self.y_projected[0,0,:])), self.r_le_in)
-            f_OUT = interpolate.NearestNDInterpolator(list(zip(self.x_projected[0,1,:], self.y_projected[0,1,:])), self.r_le_out)
+            f_IN = interpolate.NearestNDInterpolator(list(zip(self.x_projected[0,1,:], self.y_projected[0,1,:])), self.r_le_in)
+            f_OUT = interpolate.NearestNDInterpolator(list(zip(self.x_projected[0,0,:], self.y_projected[0,0,:])), self.r_le_out)
             return f_IN, f_OUT
         
         z_all = -(self.D/self.F) - (self.A * x_all / self.F) - (self.B * y_all / self.F)
@@ -612,16 +612,16 @@ class LESheetDust(LE):
             y=self.y_inter_values,
             z=self.z_inter_values,
             opacity=1))
-        xp, yp = np.meshgrid(self.x_inter_values, self.y_inter_values)
-        figs.add_trace(go.Surface(
-            x=xp,
-            y=yp,
-            z=-(self.D/self.F) - (self.A * xp / self.F) - (self.B * yp / self.F),
-            opacity=1))
+        # xp, yp = np.meshgrid(self.x_inter_values, self.y_inter_values)
+        # figs.add_trace(go.Surface(
+        #     x=xp,
+        #     y=yp,
+        #     z=-(self.D/self.F) - (self.A * xp / self.F) - (self.B * yp / self.F),
+        #     opacity=1))
         
         figs.add_trace(go.Scatter3d(
             x = [self.x_min, self.x_max, self.x_max, self.x_min, self.x_min, self.x_max, self.x_max, self.x_min],
             y = [self.y_min, self.y_min, self.y_max, self.y_max, self.y_max, self.y_max, self.y_min, self.y_min,],
             z = [self.z_min, self.z_min, self.z_min, self.z_min, self.z_max, self.z_max, self.z_max, self.z_max],
-              showlegend = False))
+              showlegend = True))
         figs.show()
