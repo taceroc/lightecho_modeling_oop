@@ -98,7 +98,7 @@ def plane(wavel, dz0, ct, dt0, params, source1, save=False, show_plots=False):
         all_r_le_in.extend(LE_plane1source1_tt.r_le_in)
         all_r_le_out.extend(LE_plane1source1_tt.r_le_out)
 
-        all_flux.extend([np.ones_like(x_inter_values) * flux_to_use])
+        all_flux.extend(np.ones_like(x_inter_values) * flux_to_use)
 
     
     all_x_inter_values = np.array(all_x_inter_values)

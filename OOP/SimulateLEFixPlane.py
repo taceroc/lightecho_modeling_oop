@@ -55,30 +55,88 @@ def plane_dust(wavel, dz0, ct, dt0, dust_position, size_cube, params, source1, s
     LE_planedust1source1 = LE.LESheetDust(ct, planedust1, source1, sheet_dust_img)
     x_inter_values, y_inter_values, z_inter_values, xy_matrix = LE_planedust1source1.run(show_initial_object=show_initial_object)
 
-
     if show_initial_object:
         LE_planedust1source1.plot_sheetdust()
 
-    # Calculate surface brightness
-    cossigma, surface_total = sb.SurfaceBrightnessDustSheetPlane(wavel, source1, 
-                                                                 LE_planedust1source1,
-                                                                 planedust1, 
-                                                                 xy_matrix).calculate_surface_brightness()
+    sb_sheetplane = sb.SurfaceBrightnessDustSheetPlane(wavel, source1, LE_planedust1source1, planedust1, xy_matrix)
 
-    # Initialize and calculate the LE image from LE and surface brightness
-    le_img = LEImageNonAnalytical(LE_planedust1source1, 
-                                  planedust1, 
-                                  surface_total, 
-                                  pixel_resolution = 0.2, 
-                                  cmap = 'magma_r')
-    surface_val, surface_img, x_img, y_img, z_img_ly = le_img.create_le_surface()
+    ###### temporal LC from source
+    mu = 6
+    variance = 800
+    sigma = np.sqrt(variance)
+    x = np.linspace(0, 360, 1000)
+    mag = -500*stats.norm.pdf(x, sigma, mu)+20
+    lc = {}
+    lc['mag'] = mag
+    lc['time'] = x * fc.dtoy
+    sb_sheetplane.lc = lc
+    #####
 
-    # name of the files
+    def find_nearest(time_array, value):
+        time_array = np.asarray(time_array)
+        idx = (np.abs(time_array - value)).argmin()
+        return idx
+    
+    diff_dt = sb_sheetplane.determine_flux_time_loop()
+    print(diff_dt)
+    times_to_loop = np.linspace(np.min(sb_sheetplane.lc['time']), np.min(sb_sheetplane.lc['time'])+diff_dt, 10)
+    print(times_to_loop.shape)
+    all_x_inter_values = []
+    all_y_inter_values = []
+    all_z_inter_values = []
+    all_flux = []
+    for tt in times_to_loop[::-1]:
+        idxs = find_nearest(sb_sheetplane.lc['time'], tt)
+        flux_to_use = sb_sheetplane.lc['mag'][idxs]
+        flux_to_use = 10**((-48.6 - flux_to_use) / 2.5)
+        ctt = ct-tt
+        
+        LE_planedust1source1_tt = LE.LESheetDust(ctt, planedust1, source1, sheet_dust_img) #LE.LEPlane(ctt, plane1, source1)
+
+        print("TIMEEE", ctt / fc.dtoy)
+        x_inter_values, y_inter_values, z_inter_values = LE_planedust1source1_tt.run(show_initial_object=False, compute_matrix=False)
+
+        all_x_inter_values.extend(x_inter_values)
+        all_y_inter_values.extend(y_inter_values)
+        all_z_inter_values.extend(z_inter_values)
+        # print("SHAPE")
+        # print((np.ones_like(x_inter_values) * flux_to_use).shape)
+        all_flux.extend(np.ones_like(x_inter_values) * flux_to_use)
+
+    all_x_inter_values = np.array(all_x_inter_values)
+    all_y_inter_values = np.array(all_y_inter_values)
+    all_z_inter_values = np.array(all_z_inter_values)
+
+
+    LE_planedust1source1.x_inter_values = all_x_inter_values
+    LE_planedust1source1.y_inter_values = all_y_inter_values
+    LE_planedust1source1.z_inter_values = all_z_inter_values
+
+    LE_planedust1source1.xy_matrix = LE_planedust1source1.XYZ_merge_plane_2ddust()
+    
+    # print(all_flux[0])
+    # print(len(all_x_inter_values))
+    all_flux = np.array(all_flux).reshape(len(all_x_inter_values))
+
+    sb_sheetplane_all = sb.SurfaceBrightnessDustSheetPlane(wavel, source1, LE_planedust1source1, planedust1, LE_planedust1source1.xy_matrix)
+    sb_sheetplane_all.lc = lc
+    print("X SHAPEE")
+    print(LE_planedust1source1.xy_matrix.shape)
+    sb_sheetplane_all.Fl = all_flux
+
+    cossigma, surface = sb_sheetplane_all.calculate_surface_brightness()
+
     n_speci = f"planedust_{CUBE_NAME}_dt0_{int(dt0 / fc.dtoy)}_ct{int(ct / fc.dtoy)}_c{dust_position}_size{size_cube}{dust_shape}dz0{round(dz0 / fc.pctoly, 2)}"
 
+    le_img = LEImageNonAnalytical(LE_planedust1source1, 
+                                    planedust1, 
+                                    surface, 
+                                    pixel_resolution = 0.2, 
+                                    cmap = 'magma_r')
+    surface_val, x_img, y_img, z_img_ly = le_img.create_le_surface(show_shape=True)
 
     fig, ax = plt.subplots(1,1, figsize = (8,8))
-    ax.imshow(surface_img, origin = "lower")
+    ax.imshow(np.log10(surface_val), origin = "lower", cmap="RdPu")
     ax.set_title(n_speci)
     figs = LE_planedust1source1.plot(le_img.new_xs, le_img.new_ys, le_img.surface_original, n_speci)
     if save == True:
@@ -101,7 +159,7 @@ def plane_dust(wavel, dz0, ct, dt0, dust_position, size_cube, params, source1, s
         np.save(pathg+"\\x_inter_arcsec"+n_speci+".npy", le_img.new_xs)
         np.save(pathg+"\\y_inter_arcsec"+n_speci+".npy", le_img.new_ys)
         np.save(pathg+"\\xy_matrix"+n_speci+".npy", xy_matrix)
-        np.save(pathg+"\\surface_"+n_speci+".npy", surface_img)
+        # np.save(pathg+"\\surface_"+n_speci+".npy", surface_img)
         np.save(pathg+"\\surface_values"+n_speci+".npy", surface_val)
 
         np.save(pathg+"\\ximg_arcsec"+n_speci+".npy", x_img)
@@ -222,10 +280,10 @@ def run(file_name, args):
         az = parameters['plane_coefficients'][2] 
         z0ly = parameters['plane_coefficients'][3] * fc.pctoly
         params = [a, ay, az, -z0ly]
-        x0 = parameters['dust_position'][0]
-        y0 = parameters['dust_position'][1]
+        x0 = parameters['dust_position'][0] * fc.pctoly
+        y0 = parameters['dust_position'][1] * fc.pctoly
         z0 = (z0ly - a*x0 - ay*y0) / az if az != 0 else 0
-        dust_position = np.array([x0, y0, z0]) * fc.pctoly
+        dust_position = np.array([x0, y0, z0]) 
     else:
         print("known")
         x0 = parameters['dust_position'][0]

@@ -295,6 +295,6 @@ class LEImageNonAnalytical(LEImage):
                         self.surface_val[j,i] = surface_inter_y(x_all[j,i], y_all[j,i])
 
         # print(self.surface_val)
-        self.surface_img = self.create_LE_img(x_size_img, y_size_img, x_all, y_all)
+        # self.surface_img = self.create_LE_img(x_size_img, y_size_img, x_all, y_all)
 
-        return self.surface_val, self.surface_img, x_img, y_img, z_img_ly
+        return self.surface_val, x_img, y_img, z_img_ly
