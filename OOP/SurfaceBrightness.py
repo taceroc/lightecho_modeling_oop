@@ -116,7 +116,7 @@ class SurfaceBrightness:
                         np.linalg.norm([self.x_inter_values, self.y_inter_values, (self.d - self.z_inter_values)], axis=0))
         # print((self.d+self.t_tilde)/fc.dtoy)
         print("ttilde", self.d)
-        # print(self.t_tilde)
+        print(self.t_tilde)
         # add +d/c because the zero of your data is when detecting 1st light
         def find_nearest(time_array, value):
             time_array = np.asarray(time_array)
@@ -125,20 +125,30 @@ class SurfaceBrightness:
         diff_dt = []
         ff = []
         tts = []
-        for it, t_tildi in enumerate(self.t_tilde):
-            if self.t_tilde[it]+self.d < 0:
-                print('neg', self.d)
-                self.t_tilde[it] = -self.d 
-            # print(self.t_tilde[it]+self.d)    
-            # print(self.lc['time']<=t_tildi)
-            time_up, idx = find_nearest(self.lc['time'], self.t_tilde[it]+self.d) #self.lc['time'][self.lc['time']<=self.t_tilde[it]+self.d]
-            diff_dt.append(abs(np.min(self.lc['time']) - time_up))
+        if len(self.t_tilde) > 1:
+            for it, t_tildi in enumerate(self.t_tilde):
+                if self.t_tilde[it]+self.d < 0:
+                    print('neg', self.d)
+                    self.t_tilde[it] = -self.d 
+                # print(self.t_tilde[it]+self.d)    
+                # print(self.lc['time']<=t_tildi)
+                time_up, idx = find_nearest(self.lc['time'], self.t_tilde[it]+self.d) #self.lc['time'][self.lc['time']<=self.t_tilde[it]+self.d]
+                diff_dt.append(abs(np.min(self.lc['time']) - time_up))
+                mag_upto = self.lc['mag'][idx]
+                flux_upto = 10**((-48.6 - mag_upto) / 2.5) # AB mag units of erg s−1 cm−2 Hz−1
+                ff.append(flux_upto)
+                tts.append(time_up)
+            self.Fl.append(integrate.simpson(np.array(ff), np.array(tts)))
+            #return the max difference between the LC time determined by ct and the start of the LC
+            return max(diff_dt)
+        else:
+            time_up, idx = find_nearest(self.lc['time'], self.t_tilde[0]+self.d)
             mag_upto = self.lc['mag'][idx]
-            flux_upto = 10**((-48.6 - mag_upto) / 2.5) # AB mag units of erg s−1 cm−2 Hz−1
-            ff.append(flux_upto)
-            tts.append(time_up)
-        self.Fl.append(integrate.simpson(np.array(ff), np.array(tts)))
-        return max(diff_dt) #return the max difference between the LC time determined by ct and the start of the LC
+            self.Fl = 10**((-48.6 - mag_upto) / 2.5)
+        # print('FL intergra')
+        # print(find_nearest(self.lc['time'], self.t_tilde[0]+self.d))
+            print(self.Fl)
+         
         
     def load_dust_values(self):
         sizeg, waveg, Qcarb, gcarb, Qsili, gsili= csf.load_data()
@@ -152,13 +162,6 @@ class SurfaceBrightness:
                 Qs_scs, gs_s, silicone_distribution)
     
 
-class SurfaceBrightnessAnalytical(SurfaceBrightness):
-    def __init__(self, wavel, source, LE, xyz_intersection):
-        super().__init__(wavel, source, LE)
-        self.x_inter_values = xyz_intersection[0]
-        self.y_inter_values = xyz_intersection[1]
-        self.z_inter_values = xyz_intersection[2]
-        
     def determine_flux_time_loop(self):
         r = np.sqrt(
             self.x_inter_values**2 + self.y_inter_values**2 + self.z_inter_values**2
@@ -169,12 +172,21 @@ class SurfaceBrightnessAnalytical(SurfaceBrightness):
             Fl = self.Fl * (fc.ytos**3)  # kg,ly,y
             self.Ir = self.Ir * Fl * fc.n_H#*1.25 * 0.5 * self.dt0  #* fc.c
         else:
-            diff_dt = super().light_curve_integral()
+            diff_dt = self.light_curve_integral()
             Fl = np.array(self.Fl) * (fc.ytos**2)  # kg,ly,y
             # print(self.Fl)
             self.Ir = Fl * fc.n_H #* fc.c
             # print(Ir)
             return diff_dt
+    
+
+class SurfaceBrightnessAnalytical(SurfaceBrightness):
+    def __init__(self, wavel, source, LE, xyz_intersection):
+        super().__init__(wavel, source, LE)
+        self.x_inter_values = xyz_intersection[0]
+        self.y_inter_values = xyz_intersection[1]
+        self.z_inter_values = xyz_intersection[2]
+        
 
     def calculate_surface_brightness(self):
         """
@@ -197,9 +209,9 @@ class SurfaceBrightnessAnalytical(SurfaceBrightness):
         # F 1.08e-14 # watts / m2
         # Ir = np.ones(len(r))
         if self.lc == None:
-            self.determine_flux_time_loop()
+            super().determine_flux_time_loop()
         else:
-            diff_dt = self.determine_flux_time_loop()
+            diff_dt = super().determine_flux_time_loop()
         
 
         self.sb_true_matrix = np.zeros(len(r))
@@ -319,6 +331,10 @@ class SurfaceBrightnessDustSheetPlane(SurfaceBrightness):
         self.size_x = sheetdust.side_x
         self.size_y = sheetdust.side_y
 
+        self.x_inter_values = LE.x_inter_values
+        self.y_inter_values = LE.y_inter_values
+        self.z_inter_values = LE.z_inter_values
+
     def calculate_surface_brightness(self):
         """
         Arguments:
@@ -368,6 +384,12 @@ class SurfaceBrightnessDustSheetPlane(SurfaceBrightness):
                 ll = np.sqrt(self.x_inter_values**2 + self.y_inter_values**2 + (self.z_inter_values - self.d) ** 2)
                 r = np.sqrt(self.x_inter_values**2 + self.y_inter_values**2 + self.z_inter_values**2)
                 cossigma = (self.x_inter_values**2 + self.y_inter_values**2 + self.z_inter_values * (self.z_inter_values - self.d)) / (r * ll)
+
+                super().light_curve_integral()
+                Fl = np.array(self.Fl) * (fc.ytos**2)  # kg,ly,y
+                # print(self.Fl)
+                Ir = Fl * fc.n_H #* fc.c
+                print(Ir)
                 # super().rhos_half()
                 # print(r*ll)
                 cossigmam = np.mean(cossigma)
