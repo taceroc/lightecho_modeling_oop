@@ -226,7 +226,6 @@ class SurfaceBrightnessAnalytical(SurfaceBrightness):
                     Qc_scs, gc_s, carbon_distribution, 
                     Qs_scs, gs_s, silicone_distribution
                 )  # 1.259E+00 in um
-                # S[ik] = (Scm[0][0] / fc.pctoly**2) * ((100 * fc.pctom) ** 2 ) # conver to ly
                 S[ik] = (Scm[0][0] * fc.pctoly**2) / ((100 * fc.pctom) ** 2 )
             else:
                 S[ik] = 0
@@ -340,7 +339,7 @@ class SurfaceBrightnessDustSheetPlane(SurfaceBrightness):
         if self.lc == None:
             # self.rhos_half()
             Fl = self.Fl * (fc.ytos**3)  # kg,ly,y
-            Ir = Fl * 1.25 * Fl * 0.5 * self.dt0 * fc.n_H * fc.c
+            Ir = Fl * 1.25 * Fl * 0.5 * self.dt0 * fc.n_H #* fc.c
         else:
             super().light_curve_integral()
             Fl = np.array(self.Fl) * (fc.ytos**2)  # kg,ly,y

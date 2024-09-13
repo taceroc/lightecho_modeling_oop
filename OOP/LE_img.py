@@ -47,11 +47,11 @@ class LEImage:
             # z_lim_min_ly, z_lim_max_ly = np.min(self.LE_geom.z_projected), np.max(self.LE_geom.z_projected)
 
         else:
-            x_lim_min, x_lim_max = np.min(self.new_xs[0,:,:]) , np.max(self.new_xs[0,:,:])
-            y_lim_min, y_lim_max = -np.max(self.new_ys[0,:,:]), np.max(self.new_ys[0,:,:])
+            x_lim_min, x_lim_max = np.min(self.new_xs[0,:,:]), np.max(self.new_xs[0,:,:])
+            y_lim_min, y_lim_max = np.min(self.new_ys[0,:,:]), np.max(self.new_ys[0,:,:])
 
             x_lim_min_ly, x_lim_max_ly = np.min(self.LE_geom.x_projected), np.max(self.LE_geom.x_projected)
-            y_lim_min_ly, y_lim_max_ly = -np.max(self.LE_geom.y_projected), np.max(self.LE_geom.y_projected)
+            y_lim_min_ly, y_lim_max_ly = np.min(self.LE_geom.y_projected), np.max(self.LE_geom.y_projected)
         # print(x_lim_min, x_lim_max, y_lim_min, y_lim_max)
 
         x_tot_arcsec = np.abs(round((x_lim_max - x_lim_min),0))
@@ -125,10 +125,11 @@ class LEImageAnalytical(LEImage):
         """
             Interpolate inner and outer radii
         """
-        f_IN = interpolate.NearestNDInterpolator(list(zip(self.new_xs[0,1,:], self.new_ys[0,1,:])), self.r_le_in)
-        f_OUT = interpolate.NearestNDInterpolator(list(zip(self.new_xs[0,0,:], self.new_ys[0,0,:])), self.r_le_out)
         print("INTERPOLATION SHAPES")
-        print(self.new_xs[0,0,:].shape, self.r_le_in.shape)
+        print(self.new_xs[0,1,:].shape, self.r_le_in.shape)
+        f_IN = interpolate.LinearNDInterpolator(list(zip(self.new_xs[0,1,:], self.new_ys[0,1,:])), self.r_le_in)
+        f_OUT = interpolate.LinearNDInterpolator(list(zip(self.new_xs[0,0,:], self.new_ys[0,0,:])), self.r_le_out)
+        
         # f_IN = interpolate.NearestNDInterpolator(list(zip(self.new_xs[0,0,:], self.new_ys[0,0,:])), self.r_le_in)
 
 
@@ -141,9 +142,9 @@ class LEImageAnalytical(LEImage):
         # interpo_surf = np.concatenate((np.array(self.surface_original), np.array(self.surface_original))).reshape(1,2,len(self.surface_original)).flatten()
         interpo_surf = self.surface_original.copy()
         print(interpo_surf.shape)
-        surface_inter_y = interpolate.CloughTocher2DInterpolator(list(zip(self.new_xs[0,0,:], self.new_ys[0,0,:])), interpo_surf)
-        surface_inter_y1 = interpolate.CloughTocher2DInterpolator(list(zip(self.new_xs[0,1,:], self.new_ys[0,1,:])), interpo_surf)
-
+        surface_inter_y = interpolate.NearestNDInterpolator(list(zip(self.new_xs[0,0,:], self.new_ys[0,0,:])), interpo_surf)
+        surface_inter_y1 = interpolate.NearestNDInterpolator(list(zip(self.new_xs[0,1,:], self.new_ys[0,1,:])), interpo_surf)
+#CloughTocher2DInterpolator
         return surface_inter_y, surface_inter_y1
     
     def create_le_surface(self):
@@ -168,13 +169,12 @@ class LEImageAnalytical(LEImage):
         y_img = np.zeros([y_size_img, x_size_img])
         z_img_ly = np.zeros([y_size_img, x_size_img])
         
-
+        print("RADISS EXT")
+        print(self.r_le_in.min(), self.r_le_out.max())
         for i in range(x_size_img):
             for j in range(y_size_img):
                 # points have to be inside the LE ring
-                if ((R_IN(x_all[j,i], y_all[j,i])) <= np.sqrt((x_all[j,i] + self.act)**2 + (y_all[j,i] + self.bct)**2) <= (R_OUT(x_all[j,i], y_all[j,i]))):
-                    # print("RADIISS")
-                    # print(R_IN(x_all[j,i], y_all[j,i]),R_OUT(x_all[j,i], y_all[j,i]))
+                if ((R_IN(x_all[j,i], y_all[j,i]) - 0.2) <= np.sqrt((x_all[j,i] + self.act)**2 + (y_all[j,i] + self.bct)**2) <= (R_OUT(x_all[j,i], y_all[j,i])+0.2)):
                     x_img[j,i] = x_all[j,i]
                     y_img[j,i] = y_all[j,i]
                     z_img_ly[j,i] = z_all_ly[j,i]
@@ -188,6 +188,10 @@ class LEImageAnalytical(LEImage):
 
         # print(self.surface_val)
         print(self.surface_val[np.isnan(self.surface_val)].shape)
+        print(self.surface_val[self.surface_val > 0].min())
+        print(self.surface_val[self.surface_val > 0].max())
+
+        # print(np.arange(x_size_img)[np.isnan(self.surface_val)], np.arange(y_size_img)[np.isnan(self.surface_val)])
         # self.surface_val[np.isnan(self.surface_val)] = surface_inter_y1(x_all[j,i], y_all[j,i])
         # print(self.surface_val[np.isnan(self.surface_val)].shape)
         plt.imshow(x_img)
