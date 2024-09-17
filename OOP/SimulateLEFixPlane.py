@@ -53,7 +53,10 @@ def plane_dust(wavel, dz0, ct, dt0, dust_position, size_cube, params, source1, s
 
     # Calculate LE object
     LE_planedust1source1 = LE.LESheetDust(ct, planedust1, source1, sheet_dust_img)
-    x_inter_values, y_inter_values, z_inter_values, xy_matrix = LE_planedust1source1.run(show_initial_object=show_initial_object)
+    try:
+        x_inter_values, y_inter_values, z_inter_values, xy_matrix = LE_planedust1source1.run(show_initial_object=show_initial_object)
+    except:
+        sys.exit(1)
 
     if show_initial_object:
         LE_planedust1source1.plot_sheetdust()
@@ -61,8 +64,8 @@ def plane_dust(wavel, dz0, ct, dt0, dust_position, size_cube, params, source1, s
     sb_sheetplane = sb.SurfaceBrightnessDustSheetPlane(wavel, source1, LE_planedust1source1, planedust1, xy_matrix)
 
     ###### temporal LC from source
-    mu = 6
-    variance = 800
+    mu = 20
+    variance = 8000
     sigma = np.sqrt(variance)
     x = np.linspace(0, 360, 1000)
     mag = -500*stats.norm.pdf(x, sigma, mu)+20
@@ -86,22 +89,26 @@ def plane_dust(wavel, dz0, ct, dt0, dust_position, size_cube, params, source1, s
     all_z_inter_values = []
     all_flux = []
     for tt in times_to_loop[::-1]:
-        idxs = find_nearest(sb_sheetplane.lc['time'], tt)
-        flux_to_use = sb_sheetplane.lc['mag'][idxs]
-        flux_to_use = 10**((-48.6 - flux_to_use) / 2.5)
-        ctt = ct-tt
-        
-        LE_planedust1source1_tt = LE.LESheetDust(ctt, planedust1, source1, sheet_dust_img) #LE.LEPlane(ctt, plane1, source1)
+        try:
+            idxs = find_nearest(sb_sheetplane.lc['time'], tt)
+            flux_to_use = sb_sheetplane.lc['mag'][idxs]
+            flux_to_use = 10**((-48.6 - flux_to_use) / 2.5)
+            ctt = ct-tt
+            
+            LE_planedust1source1_tt = LE.LESheetDust(ctt, planedust1, source1, sheet_dust_img) #LE.LEPlane(ctt, plane1, source1)
 
-        print("TIMEEE", ctt / fc.dtoy)
-        x_inter_values, y_inter_values, z_inter_values = LE_planedust1source1_tt.run(show_initial_object=False, compute_matrix=False)
+            print("TIMEEE", ctt / fc.dtoy)
+            
+            x_inter_values, y_inter_values, z_inter_values = LE_planedust1source1_tt.run(show_initial_object=False, compute_matrix=False)
 
-        all_x_inter_values.extend(x_inter_values)
-        all_y_inter_values.extend(y_inter_values)
-        all_z_inter_values.extend(z_inter_values)
-        # print("SHAPE")
-        # print((np.ones_like(x_inter_values) * flux_to_use).shape)
-        all_flux.extend(np.ones_like(x_inter_values) * flux_to_use)
+            all_x_inter_values.extend(x_inter_values)
+            all_y_inter_values.extend(y_inter_values)
+            all_z_inter_values.extend(z_inter_values)
+            # print("SHAPE")
+            # print((np.ones_like(x_inter_values) * flux_to_use).shape)
+            all_flux.extend(np.ones_like(x_inter_values) * flux_to_use)
+        except:
+            pass
 
     all_x_inter_values = np.array(all_x_inter_values)
     all_y_inter_values = np.array(all_y_inter_values)
@@ -136,7 +143,8 @@ def plane_dust(wavel, dz0, ct, dt0, dust_position, size_cube, params, source1, s
     surface_val, x_img, y_img, z_img_ly = le_img.create_le_surface(show_shape=True)
 
     fig, ax = plt.subplots(1,1, figsize = (8,8))
-    ax.imshow(np.log10(surface_val), origin = "lower", cmap="RdPu")
+    lil = ax.imshow(np.log10(surface_val), origin = "lower", cmap="RdPu")
+    plt.colorbar(lil, ax=ax)
     ax.set_title(n_speci)
     figs = LE_planedust1source1.plot(le_img.new_xs, le_img.new_ys, le_img.surface_original, n_speci)
     if save == True:

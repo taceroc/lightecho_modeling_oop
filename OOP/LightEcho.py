@@ -122,7 +122,7 @@ class LE:
             process_list(self.x_inter_values.shape)
         except ValueError as e:
             print(e)
-            sys.exit(1)
+            return e
         self.x_projected, self.y_projected = self.final_xy_projected()
 
         self.z_projected = self.func_for_z(self.x_projected, self.y_projected) #-(self.D/self.F) - (self.A/self.F) * self.x_inter_values - (self.B/self.F) * self.y_inter_values
@@ -574,7 +574,7 @@ class LESheetDust(LE):
 
         return self.xy_matrix
     
-    def run(self, show_initial_object=False, compute_matrix = True):
+    def run(self, show_initial_object=False, compute_matrix=True):
         self.x_inter_values, self.y_inter_values, self.z_inter_values = self.get_intersection_xyz(show_initial_object)
         def process_list(my_list):
             if my_list[0] == 0:
@@ -584,7 +584,8 @@ class LESheetDust(LE):
             process_list(self.x_inter_values.shape)
         except ValueError as e:
             print(e)
-            sys.exit(1)
+            return e
+            # sys.exit(1)
         if compute_matrix:
             self.xy_matrix = self.XYZ_merge_plane_2ddust()
         

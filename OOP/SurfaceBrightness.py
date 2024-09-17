@@ -115,8 +115,8 @@ class SurfaceBrightness:
                         np.linalg.norm([self.x_inter_values, self.y_inter_values, self.z_inter_values], axis=0) -
                         np.linalg.norm([self.x_inter_values, self.y_inter_values, (self.d - self.z_inter_values)], axis=0))
         # print((self.d+self.t_tilde)/fc.dtoy)
-        print("ttilde", self.d)
-        print(self.t_tilde)
+        # print("ttilde", self.d)
+        # print(self.t_tilde)
         # add +d/c because the zero of your data is when detecting 1st light
         def find_nearest(time_array, value):
             time_array = np.asarray(time_array)
@@ -147,7 +147,7 @@ class SurfaceBrightness:
             self.Fl = 10**((-48.6 - mag_upto) / 2.5)
         # print('FL intergra')
         # print(find_nearest(self.lc['time'], self.t_tilde[0]+self.d))
-            print(self.Fl)
+            # print(self.Fl)
          
         
     def load_dust_values(self):
@@ -389,7 +389,7 @@ class SurfaceBrightnessDustSheetPlane(SurfaceBrightness):
                 Fl = np.array(self.Fl) * (fc.ytos**2)  # kg,ly,y
                 # print(self.Fl)
                 Ir = Fl * fc.n_H #* fc.c
-                print(Ir)
+                # print(Ir)
                 # super().rhos_half()
                 # print(r*ll)
                 cossigmam = np.mean(cossigma)
