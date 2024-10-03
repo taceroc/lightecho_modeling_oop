@@ -134,6 +134,8 @@ class SurfaceBrightness:
                 # print(self.lc['time']<=t_tildi)
                 time_up, idx = find_nearest(self.lc['time'], self.t_tilde[it]+self.d) #self.lc['time'][self.lc['time']<=self.t_tilde[it]+self.d]
                 diff_dt.append(abs(np.min(self.lc['time']) - time_up))
+                # diff_dt.append(abs(self.lc['time'][self.lc['mag'] == self.lc['mag'].min()] - time_up)[0])
+
                 mag_upto = self.lc['mag'][idx]
                 flux_upto = 10**((-48.6 - mag_upto) / 2.5) # AB mag units of erg s−1 cm−2 Hz−1
                 ff.append(flux_upto)

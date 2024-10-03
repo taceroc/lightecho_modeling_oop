@@ -57,6 +57,7 @@ class LEImage:
         x_tot_arcsec = np.abs(round((x_lim_max - x_lim_min),0))
         y_tot_arcsec = np.abs(round((y_lim_max - y_lim_min),0))
         print("size arcsec", np.max(self.new_ys), np.min(self.new_ys), x_tot_arcsec, y_tot_arcsec)
+        print("size ly", x_lim_max_ly, x_lim_min_ly)
 
         x_size_img = int(x_tot_arcsec / self.pixel)
         y_size_img = int(y_tot_arcsec / self.pixel)
@@ -69,7 +70,7 @@ class LEImage:
         z_all_ly = self.LE_geom.func_for_z(x_all_ly, y_all_ly)
 
 
-        return x_size_img, y_size_img, x_all, y_all, z_all_ly
+        return x_size_img, y_size_img, x_all, y_all, x_all_ly, y_all_ly, z_all_ly
     
     def create_LE_img(self, x_size_img, y_size_img, x_all, y_all):
         """
@@ -261,7 +262,8 @@ class LEImageNonAnalytical(LEImage):
                 x_img, y_img: pixels from the meshgrid that fell into the LE shape
         """
 
-        x_size_img, y_size_img, x_all, y_all, z_all_ly = self.define_image_size(self.geometry_to_use)
+        (x_size_img, y_size_img, x_all, y_all, 
+         x_all_ly, y_all_ly, z_all_ly) = self.define_image_size(self.geometry_to_use)
         alpha_shape, surface_inter_y = self.define_shape_to_interpolate(show_shape)
         self.surface_val = np.zeros([y_size_img, x_size_img])
         x_img = np.zeros([y_size_img, x_size_img])
@@ -282,7 +284,10 @@ class LEImageNonAnalytical(LEImage):
                     test = poly.contains(p1) | poly.touches(p1)
                     if test == False:
                         # print("false")
-                        self.surface_val[j,i] = "Nan"
+                        x_img[j,i] = x_all[j,i]
+                        y_img[j,i] = y_all[j,i]
+                        z_img_ly[j,i] = z_all_ly[j,i]
+                        self.surface_val[j,i] = -1
                     else:
                         # x_img.append(x_all[j,i])
                         # y_img.append(y_all[j,i])
@@ -297,4 +302,4 @@ class LEImageNonAnalytical(LEImage):
         # print(self.surface_val)
         # self.surface_img = self.create_LE_img(x_size_img, y_size_img, x_all, y_all)
 
-        return self.surface_val, x_img, y_img, z_img_ly
+        return self.surface_val, x_img, y_img, x_all_ly, y_all_ly, z_img_ly

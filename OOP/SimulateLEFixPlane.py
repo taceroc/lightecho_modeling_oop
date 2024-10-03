@@ -73,6 +73,20 @@ def plane_dust(wavel, dz0, ct, dt0, dust_position, size_cube, params, source1, s
     lc['mag'] = mag
     lc['time'] = x * fc.dtoy
     sb_sheetplane.lc = lc
+    ###
+    # sys.path.append("C:\\Users\\tac19\\OneDrive\\Documents\\UDEL\\Project_RA\\LE\\LC\\")
+    # import extract_lc
+    # name_= 'sn2011fe'
+    # lc_sn2011fe = extract_lc.read_from_open_catalog(name_)
+    # small_sources = [lc_sn2011fe.groupby('source').size().index[2],
+    #              lc_sn2011fe.groupby('source').size().index[8]]
+    # D11 = small_sources[-1]
+    # lc_sn2011fe = lc_sn2011fe[lc_sn2011fe.source != D11]
+    # lc = {}
+    # lc['mag'] = lc_sn2011fe[(lc_sn2011fe['band'] == 'B') & (lc_sn2011fe['time'] <= lc_sn2011fe['time'].min() + 565)]['magnitude'].values
+    # lc['time'] = (lc_sn2011fe[(lc_sn2011fe['band'] == 'B') & (lc_sn2011fe['time'] <= lc_sn2011fe['time'].min() + 565)]['time'].values - lc_sn2011fe['time'].min())* fc.dtoy
+    # sb_sheetplane.lc = lc
+
     #####
 
     def find_nearest(time_array, value):
@@ -82,7 +96,12 @@ def plane_dust(wavel, dz0, ct, dt0, dust_position, size_cube, params, source1, s
     
     diff_dt = sb_sheetplane.determine_flux_time_loop()
     print(diff_dt)
-    times_to_loop = np.linspace(np.min(sb_sheetplane.lc['time']), np.min(sb_sheetplane.lc['time'])+diff_dt, 10)
+    times_to_loop = np.linspace(np.min(sb_sheetplane.lc['time']), np.min(sb_sheetplane.lc['time'])+diff_dt, 15)
+    
+    # tt_min = sb_sheetplane.lc['time'][sb_sheetplane.lc['mag'] == sb_sheetplane.lc['mag'].min()]
+    # times_to_loop = np.linspace(tt_min, tt_min+diff_dt, 10)
+
+    print(times_to_loop)
     print(times_to_loop.shape)
     all_x_inter_values = []
     all_y_inter_values = []
@@ -91,9 +110,15 @@ def plane_dust(wavel, dz0, ct, dt0, dust_position, size_cube, params, source1, s
     for tt in times_to_loop[::-1]:
         try:
             idxs = find_nearest(sb_sheetplane.lc['time'], tt)
+            print(idxs)
             flux_to_use = sb_sheetplane.lc['mag'][idxs]
+            print("CHECK LC")
+            print(idxs, sb_sheetplane.lc['mag'][idxs], sb_sheetplane.lc['time'][idxs] )
             flux_to_use = 10**((-48.6 - flux_to_use) / 2.5)
-            ctt = ct-tt
+            # ctt = ct-tt
+            ctt = ct-sb_sheetplane.lc['time'][idxs]
+            if ctt < 0:
+                ctt = 0
             
             LE_planedust1source1_tt = LE.LESheetDust(ctt, planedust1, source1, sheet_dust_img) #LE.LEPlane(ctt, plane1, source1)
 
@@ -133,24 +158,25 @@ def plane_dust(wavel, dz0, ct, dt0, dust_position, size_cube, params, source1, s
 
     cossigma, surface = sb_sheetplane_all.calculate_surface_brightness()
 
-    n_speci = f"planedust_{CUBE_NAME}_dt0_{int(dt0 / fc.dtoy)}_ct{int(ct / fc.dtoy)}_c{dust_position}_size{size_cube}{dust_shape}dz0{round(dz0 / fc.pctoly, 2)}"
-
+    n_speci = f"planedust_{CUBE_NAME}_lambda_{int(wavel*1000)}_dt0_{int(dt0 / fc.dtoy)}_ct{int(ct / fc.dtoy)}_c{dust_position/fc.pctoly}_size{size_cube/fc.pctoly}{dust_shape}dz0{round(dz0 / fc.pctoly, 2)}"
+    print(n_speci)
     le_img = LEImageNonAnalytical(LE_planedust1source1, 
                                     planedust1, 
                                     surface, 
                                     pixel_resolution = 0.2, 
                                     cmap = 'magma_r')
-    surface_val, x_img, y_img, z_img_ly = le_img.create_le_surface(show_shape=True)
+    surface_val, x_img, y_img, x_all_ly, y_all_ly, z_img_ly = le_img.create_le_surface(show_shape=False)
 
     fig, ax = plt.subplots(1,1, figsize = (8,8))
-    lil = ax.imshow(np.log10(surface_val), origin = "lower", cmap="RdPu")
+    surface_val[surface_val == -1] = 0
+    lil = ax.imshow(-2.5*np.log10(surface_val * (1/(9.461e+17)**3) *(1/(3.154e+7)**2)) - 48.60, origin = "lower", cmap="RdPu")
     plt.colorbar(lil, ax=ax)
     ax.set_title(n_speci)
-    figs = LE_planedust1source1.plot(le_img.new_xs, le_img.new_ys, le_img.surface_original, n_speci)
+    # figs = LE_planedust1source1.plot(le_img.new_xs, le_img.new_ys, le_img.surface_original, n_speci)
     if save == True:
         pathg = PATH_TO_RESULTS_FIGURES
         plt.savefig(pathg+"\\img_"+n_speci+".pdf", dpi = 300 )
-        figs.write_image(pathg+"\\scatter_"+n_speci+".pdf")
+        # figs.write_image(pathg+"\\scatter_"+n_speci+".pdf")
         info_le = [{
             'dust_shape (ly)': dust_shape,
             'size_cube (ly)': size_cube,
@@ -172,17 +198,17 @@ def plane_dust(wavel, dz0, ct, dt0, dust_position, size_cube, params, source1, s
 
         np.save(pathg+"\\ximg_arcsec"+n_speci+".npy", x_img)
         np.save(pathg+"\\yimg_arcsec"+n_speci+".npy", y_img)
-        np.save(pathg+"\\zimgly_arcsec"+n_speci+".npy", z_img_ly)
+        np.save(pathg+"\\zimgly"+n_speci+".npy", z_img_ly)
 
 
         # -- save the intersection points in xyz system in ly
-        np.save(pathg+"\\x_inter_ly"+n_speci+".npy", x_inter_values)
-        np.save(pathg+"\\y_inter_ly"+n_speci+".npy", y_inter_values)
-        np.save(pathg+"\\z_inter_ly"+n_speci+".npy", z_inter_values)
+        np.save(pathg+"\\ximgly"+n_speci+".npy", x_all_ly)
+        np.save(pathg+"\\yimgly"+n_speci+".npy", y_all_ly)
+        # np.save(pathg+"\\z_inter_ly"+n_speci+".npy", z_inter_values)
 
     if show_plots == True:
         plt.show()
-        figs.show()
+        # figs.show()
 
 
 
@@ -304,11 +330,16 @@ def run(file_name, args):
     bool_show_plots = args[1]
     bool_show_initial_object = args[2]
 
-    wavel = parameters['wave'] #in um
-
+    # wavel = parameters['wave'] #in um
+    # print(wavel)
     
 
     source1 = Source(dt0, d, Flmax)
-    plane_dust(wavel, dz0, ct, dt0, dust_position, size_cube, 
-               params, source1, save=bool_save, 
-               show_plots=bool_show_plots, show_initial_object=bool_show_initial_object)
+    # for ct in np.linspace(280, 285, 2) * fc.dtoy:
+    for wav in np.array([3.499E-01, 4.499E-01, 5.499E-01, 6.499E-01, 7.499E-01, 8.499E-01]):
+        # print(f"NEW TIME {round((ct / fc.dtoy),2)}")
+        print(f"wave {wav}")
+
+        plane_dust(wav, dz0, ct, dt0, dust_position, size_cube, 
+                params, source1, save=bool_save, 
+                show_plots=bool_show_plots, show_initial_object=bool_show_initial_object)

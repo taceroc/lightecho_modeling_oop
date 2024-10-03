@@ -85,7 +85,7 @@ if __name__ == '__main__':
     funcsim.run(ins.txtparameters, [ins.bool_save, ins.bool_show_plots, ins.bool_show_initial_object])
 
 #### python main.py SimulateLEInfPlane -file_to_parameters params_infplane.txt --no-bool_save --bool_show_plots --no-bool_show_initial_object
-### python main.py SimulateLEIFixPlane -file_to_parameters params_unknown_fixplane.txt --no-bool_save --bool_show_plots --bool_show_initial_object
+### python main.py SimulateLEFixPlane -file_to_parameters params_unknown_fixplane.txt --no-bool_save --bool_show_plots --bool_show_initial_object
 
 def old():
     def plane(dz0, ct, dt0, params, source1, save = False):
