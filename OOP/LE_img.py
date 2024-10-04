@@ -252,11 +252,15 @@ class LEImageNonAnalytical(LEImage):
                     test = poly.contains(p1) | poly.touches(p1)
                     if test == False:
                         # print("false")
-                        self.surface_val[j,i] = "Nan"
+                        self.surface_val[j,i] = -1
+                        x_img[j,i] = x_all[j,i]
+                        y_img[j,i] = y_all[j,i]
+                        z_img_ly[j,i] = z_all_ly[j,i]
                     else:
                         # x_img.append(x_all[j,i])
                         # y_img.append(y_all[j,i])
                         # z_img_ly.append(z_all_ly[j,i])
+                        
 
                         x_img[j,i] = x_all[j,i]
                         y_img[j,i] = y_all[j,i]

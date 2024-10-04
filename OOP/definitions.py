@@ -19,10 +19,10 @@ PATH_TO_DUST_IMG_CODE = os.path.join(ROOT_DIR, 'dust\\cube\\code')
 dir_save_result = 'results'
 PATH_TO_RESULTS = os.path.join(ROOT_DIR, dir_save_result) 
 
-dir_save_simulations = 'results\\arrays'
+dir_save_simulations = 'results\\LC_dt0_2011\\arrays'
 PATH_TO_RESULTS_SIMULATIONS = os.path.join(ROOT_DIR, dir_save_simulations) 
 
-dir_save_figures = 'results\\figures'
+dir_save_figures = 'results\\LC_dt0_2011\\figures'
 PATH_TO_RESULTS_FIGURES = os.path.join(ROOT_DIR, dir_save_figures) 
 
 #

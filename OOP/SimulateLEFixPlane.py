@@ -50,7 +50,7 @@ def plane_dust(wavel, dz0, ct, dt0, dust_position, size_cube, params, source1, s
     dust_shape = np.array(sheet_dust_img.shape)
     # Initiliaze DustShape object 
     planedust1 = PlaneDust(params, dz0, dust_shape, dust_position, size_cube )
-
+    source1.dt0 = 0
     # Calculate LE object
     LE_planedust1source1 = LE.LESheetDust(ct, planedust1, source1, sheet_dust_img)
     x_inter_values, y_inter_values, z_inter_values, xy_matrix = LE_planedust1source1.run(show_initial_object=show_initial_object)
@@ -59,11 +59,55 @@ def plane_dust(wavel, dz0, ct, dt0, dust_position, size_cube, params, source1, s
     if show_initial_object:
         LE_planedust1source1.plot_sheetdust()
 
+
+    sb_sheetplane = sb.SurfaceBrightnessDustSheetPlane(wavel, source1, LE_planedust1source1, planedust1, xy_matrix)
+
+    ###### temporal LC from source
+    # mu = 20
+    # variance = 8000
+    # sigma = np.sqrt(variance)
+    # x = np.linspace(0, 360, 1000)
+    # mag = -500*stats.norm.pdf(x, sigma, mu)+20
+    # lc = {}
+    # lc['mag'] = mag
+    # lc['time'] = x * fc.dtoy
+    # sb_sheetplane.lc = lc
+    ###
+
+    sys.path.append("C:\\Users\\tac19\\OneDrive\\Documents\\UDEL\\Project_RA\\LE\\LC\\")
+    import extract_lc
+    name_= 'sn2011fe'
+    lc_sn2011fe = extract_lc.read_from_open_catalog(name_)
+    small_sources = [lc_sn2011fe.groupby('source').size().index[2],
+                 lc_sn2011fe.groupby('source').size().index[8]]
+    D11 = small_sources[-1]
+    lc_sn2011fe = lc_sn2011fe[lc_sn2011fe.source != D11]
+    lc = {}
+    lc['mag'] = lc_sn2011fe[(lc_sn2011fe['band'] == 'B') & (lc_sn2011fe['time'] <= lc_sn2011fe['time'].min() + 365)]['magnitude'].values
+    lc['time'] = (lc_sn2011fe[(lc_sn2011fe['band'] == 'B') & (lc_sn2011fe['time'] <= lc_sn2011fe['time'].min() + 365)]['time'].values - lc_sn2011fe['time'].min())* fc.dtoy
+    sb_sheetplane.lc = lc
+    ######
+
+    # def find_nearest(time_array, value):
+    #     time_array = np.asarray(time_array)
+    #     idx = (np.abs(time_array - value)).argmin()
+    #     return idx
+    
+    diff_dt = sb_sheetplane.determine_flux_time_loop()
+    Fl = sb_sheetplane.Fl
+    print(diff_dt)
+
+    source1.dt0 = diff_dt
+    print(f"dt0 = {source1.dt0}")
+    # Calculate LE object
+    LE_planedust1source1 = LE.LESheetDust(ct, planedust1, source1, sheet_dust_img)
+    x_inter_values, y_inter_values, z_inter_values, xy_matrix = LE_planedust1source1.run(show_initial_object=show_initial_object)
+    
     # Calculate surface brightness
-    cossigma, surface_total = sb.SurfaceBrightnessDustSheetPlane(wavel, source1, 
-                                                                 LE_planedust1source1,
-                                                                 planedust1, 
-                                                                 xy_matrix).calculate_surface_brightness()
+    sb_sheetplane = sb.SurfaceBrightnessDustSheetPlane(wavel, source1, LE_planedust1source1, planedust1, xy_matrix)
+    sb_sheetplane.lc = lc
+    sb_sheetplane.Fl = Fl
+    cossigma, surface_total = sb_sheetplane.calculate_surface_brightness()
 
     # Initialize and calculate the LE image from LE and surface brightness
     le_img = LEImageNonAnalytical(LE_planedust1source1, 
@@ -74,17 +118,18 @@ def plane_dust(wavel, dz0, ct, dt0, dust_position, size_cube, params, source1, s
     surface_val, surface_img, x_img, y_img, z_img_ly = le_img.create_le_surface()
 
     # name of the files
-    n_speci = f"planedust_{CUBE_NAME}_dt0_{int(dt0 / fc.dtoy)}_ct{int(ct / fc.dtoy)}_c{dust_position}_size{size_cube}{dust_shape}dz0{round(dz0 / fc.pctoly, 2)}"
-
+    n_speci = f"planedust_{CUBE_NAME}_lambda_{int(wavel*1000)}_dt0_{int(dt0 / fc.dtoy)}_ct{int(ct / fc.dtoy)}_c{dust_position/fc.pctoly}_size{size_cube/fc.pctoly}{dust_shape}dz0{round(dz0 / fc.pctoly, 2)}"
 
     fig, ax = plt.subplots(1,1, figsize = (8,8))
-    ax.imshow(surface_img, origin = "lower")
+    surface_val[surface_val == -1] = 0
+    lil = ax.imshow(-2.5*np.log10(surface_val * (1/(9.461e+17)**3) *(1/(3.154e+7)**2)) - 48.60, origin = "lower", cmap="RdPu")
+    plt.colorbar(lil, ax=ax)
     ax.set_title(n_speci)
-    figs = LE_planedust1source1.plot(le_img.new_xs, le_img.new_ys, le_img.surface_original, n_speci)
+    # figs = LE_planedust1source1.plot(le_img.new_xs, le_img.new_ys, le_img.surface_original, n_speci)
     if save == True:
         pathg = PATH_TO_RESULTS_FIGURES
         plt.savefig(pathg+"\\img_"+n_speci+".pdf", dpi = 300 )
-        figs.write_image(pathg+"\\scatter_"+n_speci+".pdf")
+        # figs.write_image(pathg+"\\scatter_"+n_speci+".pdf")
         info_le = [{
             'dust_shape (ly)': dust_shape,
             'size_cube (ly)': size_cube,
@@ -92,6 +137,7 @@ def plane_dust(wavel, dz0, ct, dt0, dust_position, size_cube, params, source1, s
             'dz0 (ly)': dz0,
             'dt0 (days)': int(round(dt0 / fc.dtoy)),
             'ct (days)': int(round(ct / fc.dtoy)),
+            'wave (um)': wavel,
             'file_name': pathg+"\\surface_"+n_speci+".npy"}]
 
         pathg = PATH_TO_RESULTS_SIMULATIONS 
@@ -116,7 +162,7 @@ def plane_dust(wavel, dz0, ct, dt0, dust_position, size_cube, params, source1, s
 
     if show_plots == True:
         plt.show()
-        figs.show()
+        # figs.show()
 
 
 
@@ -243,6 +289,8 @@ def run(file_name, args):
     
 
     source1 = Source(dt0, d, Flmax)
-    plane_dust(wavel, dz0, ct, dt0, dust_position, size_cube, 
-               params, source1, save=bool_save, 
-               show_plots=bool_show_plots, show_initial_object=bool_show_initial_object)
+    for ct in np.linspace(80, 290, 30) * fc.dtoy:
+        print(f"NEW TIME {round((ct / fc.dtoy),2)}")
+        plane_dust(wavel, dz0, ct, dt0, dust_position, size_cube, 
+                params, source1, save=bool_save, 
+                show_plots=bool_show_plots, show_initial_object=bool_show_initial_object)
