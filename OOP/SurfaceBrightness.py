@@ -398,6 +398,7 @@ class SurfaceBrightnessDustSheetPlane(SurfaceBrightness):
                 # print(self.Fl)
         Ir = Fl * fc.n_H #* fc.c
         print(Ir)
+        sum_dd = np.sum(self.xy_matrix[:, :, 3])
         for i in range(self.size_x):
             for j in range(self.size_y):
                 self.x_inter_values = self.xy_matrix[j, i, 0]
