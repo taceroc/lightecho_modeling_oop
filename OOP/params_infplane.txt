@@ -1,7 +1,7 @@
 {"dt0": 50,
-"ct": 180,
-"d": 16000,
+"ct": 480,
+"d": 10000,
 "Flmax": 1e16,
 "dz0": 0.02,
-"plane_coefficients": [0.2, 0, 1, 1],
+"plane_coefficients": [0.2, 0, 1, 10],
 "wave": 7.499E-01}

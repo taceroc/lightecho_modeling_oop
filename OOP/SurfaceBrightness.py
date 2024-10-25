@@ -106,7 +106,7 @@ class SurfaceBrightness:
             Return:
                 Flux at wavelenght lambda
         """
-        self.Fl = [] # it stores the flux for each x,y,z, that gives a differnte LC time
+        self.Fl = 0 # it stores the flux for each x,y,z, that gives a differnte LC time
         # self.rhos_half()
         # self.lc['time'] = self.lc['time'] * fc.dtoy
         # t_tilde =  self.ct - (np.sqrt(self.rhos**2 + self.z_inter_values**2) / fc.c) - (np.abs(self.z_inter_values) / fc.c)
@@ -114,39 +114,30 @@ class SurfaceBrightness:
         self.t_tilde = (self.ct + self.lc['time'][self.lc['mag'] == self.lc['mag'].min()] - 
                         np.linalg.norm([self.x_inter_values, self.y_inter_values, self.z_inter_values], axis=0) -
                         np.linalg.norm([self.x_inter_values, self.y_inter_values, (self.d - self.z_inter_values)], axis=0))
-        # print((self.d+self.t_tilde)/fc.dtoy)
-        # print("ttilde", self.d)
+        print((self.d+self.t_tilde[-1])/fc.dtoy)
+        print("ttilde", (self.t_tilde[-1])/fc.dtoy, (self.d)/fc.dtoy)
         # print(self.t_tilde)
         # add +d/c because the zero of your data is when detecting 1st light
         def find_nearest(time_array, value):
             time_array = np.asarray(time_array)
             idx = (np.abs(time_array - value)).argmin()
             return time_array[idx], idx
-        diff_dt = []
-        ff = []
-        tts = []
-        if len(self.t_tilde) > 1:
-            for it, t_tildi in enumerate(self.t_tilde):
-                if self.t_tilde[it]+self.d < 0:
-                    print('neg', self.d)
-                    self.t_tilde[it] = -self.d 
-                # print(self.t_tilde[it]+self.d)    
-                # print(self.lc['time']<=t_tildi)
-                time_up, idx = find_nearest(self.lc['time'], self.t_tilde[it]+self.d) #self.lc['time'][self.lc['time']<=self.t_tilde[it]+self.d]
-                diff_dt.append(abs(np.min(self.lc['time']) - time_up))
-                # diff_dt.append(abs(self.lc['time'][self.lc['mag'] == self.lc['mag'].min()] - time_up)[0])
+        diff_dt = 0
+        if self.t_tilde[-1]+self.d < 0:
+            print('neg', self.d)
+            self.t_tilde[-1] = -self.d 
+        # print(self.t_tilde[it]+self.d)    
+        # print(self.lc['time']<=t_tildi)
+        time_up, idx = find_nearest(self.lc['time'], self.t_tilde[-1]+self.d) #self.lc['time'][self.lc['time']<=self.t_tilde[it]+self.d]
+        diff_dt = abs(np.min(self.lc['time']) - time_up)
 
-                mag_upto = self.lc['mag'][idx]
-                flux_upto = 10**((-48.6 - mag_upto) / 2.5) # AB mag units of erg s−1 cm−2 Hz−1
-                ff.append(flux_upto)
-                tts.append(time_up)
-            self.Fl.append(integrate.simpson(np.array(ff), np.array(tts)))
-            #return the max difference between the LC time determined by ct and the start of the LC
-            return max(diff_dt)
-        else:
-            time_up, idx = find_nearest(self.lc['time'], self.t_tilde[0]+self.d)
-            mag_upto = self.lc['mag'][idx]
-            self.Fl = 10**((-48.6 - mag_upto) / 2.5)
+        mag_upto = self.lc['mag'][idx]
+        flux_upto = 10**((-48.6 - mag_upto) / 2.5)
+
+
+        self.Fl = flux_upto
+
+        return diff_dt 
         # print('FL intergra')
         # print(find_nearest(self.lc['time'], self.t_tilde[0]+self.d))
             # print(self.Fl)

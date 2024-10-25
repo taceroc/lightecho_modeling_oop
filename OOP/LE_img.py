@@ -164,7 +164,7 @@ class LEImageAnalytical(LEImage):
         # R_IN = self.interpolation_radiis()
 
         surface_inter_y, surface_inter_y1  = self.interpolation_surface()
-        x_size_img, y_size_img, x_all, y_all, z_all_ly = self.define_image_size(self.geometry_to_use)
+        x_size_img, y_size_img, x_all, y_all, x_all_ly, y_all_ly, z_all_ly = self.define_image_size(self.geometry_to_use)
         self.surface_val = np.zeros([y_size_img, x_size_img])
         x_img = np.zeros([y_size_img, x_size_img])
         y_img = np.zeros([y_size_img, x_size_img])
