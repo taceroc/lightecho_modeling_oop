@@ -175,7 +175,7 @@ class LEImageAnalytical(LEImage):
         for i in range(x_size_img):
             for j in range(y_size_img):
                 # points have to be inside the LE ring
-                if ((R_IN(x_all[j,i], y_all[j,i]) - 0.2) <= np.sqrt((x_all[j,i] + self.act)**2 + (y_all[j,i] + self.bct)**2) <= (R_OUT(x_all[j,i], y_all[j,i])+0.2)):
+                if ((R_IN(x_all[j,i], y_all[j,i])-0.2) <= np.sqrt((x_all[j,i] + self.act)**2 + (y_all[j,i] + self.bct)**2) <= (R_OUT(x_all[j,i], y_all[j,i])+0.2)):
                     x_img[j,i] = x_all[j,i]
                     y_img[j,i] = y_all[j,i]
                     z_img_ly[j,i] = z_all_ly[j,i]
@@ -186,9 +186,14 @@ class LEImageAnalytical(LEImage):
                         self.surface_val[j,i] = surface_inter_y(x_all[j,i], y_all[j,i])
                     else:
                         self.surface_val[j,i] = surface_inter_y(x_all[j,i], y_all[j,i])
+                # else:
+                #     print("no match inside")
 
         # print(self.surface_val)
         print(self.surface_val[np.isnan(self.surface_val)].shape)
+        print(self.surface_val.min())
+        print(self.surface_val.max())
+        
         print(self.surface_val[self.surface_val > 0].min())
         print(self.surface_val[self.surface_val > 0].max())
 
